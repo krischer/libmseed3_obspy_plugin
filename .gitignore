@@ -1,0 +1,4 @@
+build/
+libmseed3_obspy_plugin.egg-info/
+libmseed3_obspy_plugin/lib/libmseed.*.so
+pip-wheel-metadata/
