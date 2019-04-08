@@ -1,0 +1,3 @@
+[submodule "libmseed3_obspy_plugin/src/libmseed"]
+	path = libmseed3_obspy_plugin/src/libmseed
+	url = https://github.com/iris-edu/libmseed.git
