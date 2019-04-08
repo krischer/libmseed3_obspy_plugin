@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 
 src = pathlib.Path(".") / "libmseed3_obspy_plugin" / "src" / "libmseed"
-src_files = ["tracelist.c"]
+src_files = ["genutils.c", "tracelist.c"]
 
 lib = Extension(
     "libmseed3_obspy_plugin.lib.libmseed",
