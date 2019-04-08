@@ -7,12 +7,11 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 
+# Just add all C files for now.
 src = pathlib.Path(".") / "libmseed3_obspy_plugin" / "src" / "libmseed"
-src_files = ["genutils.c", "tracelist.c"]
-
+src_files = list(src.glob("*.c"))
 lib = Extension(
-    "libmseed3_obspy_plugin.lib.libmseed",
-    sources=[str(src / i) for i in src_files],
+    "libmseed3_obspy_plugin.lib.libmseed", sources=[str(i) for i in src_files]
 )
 extensions = [lib]
 
