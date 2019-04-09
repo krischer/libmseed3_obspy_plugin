@@ -1,4 +1,5 @@
 import ctypes as C  # NOQA
+import io
 import pathlib
 import typing
 
@@ -6,6 +7,57 @@ import obspy
 import numpy as np
 
 from . import utils
+
+_f_types = (typing.Union[io.RawIOBase, str, pathlib.Path],)
+
+
+def _buffer_proxy(
+    filename_or_buf: _f_types,
+    function: typing.Callable,
+    reset_fp: bool = True,
+    *args: typing.Any,
+    **kwargs: typing.Any,
+):
+    """
+    Calls a function with an open file or file-like object as the first
+    argument. If the file originally was a filename, the file will be
+    opened, otherwise it will just be passed to the underlying function.
+
+    :param filename_or_buf: File to pass.
+    :type filename_or_buf: str, open file, or file-like object.
+    :param function: The function to call.
+    :param reset_fp: If True, the file pointer will be set to the initial
+        position after the function has been called.
+    :type reset_fp: bool
+    """
+    # String or pathlib.Path => Open file
+    if isinstance(filename_or_buf, (str, pathlib.Path)):
+        with open(filename_or_buf, "rb") as fh:
+            return function(fh, *args, **kwargs)
+
+    # Otherwise it must have a tell method.
+    position = filename_or_buf.tell()
+
+    # Catch the exception to worst case be able to reset the file pointer.
+    try:
+        ret_val = function(filename_or_buf, *args, **kwargs)
+    except Exception:
+        filename_or_buf.seek(position, 0)
+        raise
+    # Always reset if reset_fp is True.
+    if reset_fp:
+        filename_or_buf.seek(position, 0)
+    return ret_val
+
+
+def _is_mseed(filename: _f_types) -> bool:
+    return _buffer_proxy(
+        filename_or_buf=filename, function=_buffer_is_mseed, reset_fp=True
+    )
+
+
+def _buffer_is_mseed(handle: io.RawIOBase) -> bool:
+    return handle.read(2) == b"MS"
 
 
 def read(handle: typing.Union[str, pathlib.Path]) -> obspy.Stream:
@@ -68,8 +120,9 @@ def _trace_segment_to_trace(t_s, id: str) -> obspy.Trace:
     )
     arr.dtype = dtype
 
+    # Make a copy as the default datasamples are freed. Maybe the freeing is
+    # not necessary? Have to check.
     new_array = np.empty_like(arr)
-
     np.copyto(src=arr, dst=new_array)
     tr.data = new_array
     return tr
