@@ -31,7 +31,7 @@ _nstime_t = C.c_longlong
 
 
 SAMPLE_TYPES = {
-    b"a": np.char,
+    b"a": np.dtype("|S1"),
     b"i": np.int32,
     b"f": np.float32,
     b"d": np.float64,

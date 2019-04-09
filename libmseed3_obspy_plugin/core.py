@@ -133,7 +133,10 @@ def _trace_segment_to_trace(t_s, id: str) -> obspy.Trace:
     tr.stats.sampling_rate = t_s.samprate
 
     dtype = utils.SAMPLE_TYPES[t_s.sampletype]
-    itemsize = dtype().itemsize
+
+    itemsize = dtype.itemsize
+    if not isinstance(itemsize, int):
+        itemsize = dtype().itemsize
 
     arr = np.ctypeslib.as_array(
         t_s.datasamples, shape=(t_s.numsamples * itemsize,)
