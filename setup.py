@@ -31,4 +31,12 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     ext_modules=extensions,
+    entry_points={
+        # Register with ObsPy
+        "obspy.plugin.waveform": "MSEED3 = libmseed3_obspy_plugin.core",
+        "obspy.plugin.waveform.MSEED3": [
+            "isFormat = libmseed3_obspy_plugin.core:_is_mseed3",
+            "readFormat = libmseed3_obspy_plugin.core:_read_mseed3",
+        ],
+    },
 )

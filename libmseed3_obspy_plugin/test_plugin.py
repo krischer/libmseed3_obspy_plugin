@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from libmseed3_obspy_plugin.core import read, _is_mseed
+from libmseed3_obspy_plugin.core import _is_mseed3
 
 data = pathlib.Path(__file__).parent / "src" / "libmseed" / "test"
 
@@ -16,7 +16,7 @@ data = pathlib.Path(__file__).parent / "src" / "libmseed" / "test"
     list(zip(data.glob("read-*"), itertools.repeat(False))),
 )
 def test_is_mseed(path, expected_result):
-    assert _is_mseed(path) is expected_result
+    assert _is_mseed3(path) is expected_result
 
 
 def test_read_by_unpacking_libmseed3_packed_data():
@@ -24,3 +24,4 @@ def test_read_by_unpacking_libmseed3_packed_data():
     libmseed3 currently comes with a couple of MiniSEED3 files that it
     creates from reference data. We'll just test reading these here.
     """
+    pass

@@ -50,30 +50,50 @@ def _buffer_proxy(
     return ret_val
 
 
-def _is_mseed(filename: _f_types) -> bool:
+def _is_mseed3(filename: _f_types) -> bool:
     return _buffer_proxy(
-        filename_or_buf=filename, function=_buffer_is_mseed, reset_fp=True
+        filename_or_buf=filename, function=_buffer_is_mseed3, reset_fp=True
     )
 
 
-def _buffer_is_mseed(handle: io.RawIOBase) -> bool:
+def _buffer_is_mseed3(handle: io.RawIOBase) -> bool:
     return handle.read(2) == b"MS"
 
 
-def read(handle: typing.Union[str, pathlib.Path]) -> obspy.Stream:
-    if not hasattr(handle, "flush"):
-        with open(handle, "rb") as fh:
-            return _read_buffer(np.fromfile(fh, dtype=np.uint8))
-    return _read_buffer(np.fromfile(handle, dtype=np.uint8))
+def _read_mseed3(
+    filename: _f_types,
+    headonly: bool = False,
+    starttime: typing.Optional[obspy.UTCDateTime] = None,
+    endtime: typing.Optional[obspy.UTCDateTime] = None,
+    verbose: bool = False,
+    **kwargs,
+) -> obspy.Stream():
+    # Don't even bother passing on the extra kwargs - this should really be
+    # cleaned up on ObsPy's side.
+    return _buffer_proxy(
+        filename_or_buf=filename,
+        function=_buffer_read_mseed3,
+        reset_fp=False,
+        headonly=headonly,
+        starttime=starttime,
+        endtime=endtime,
+        verbose=verbose,
+    )
 
 
-def _read_buffer(
-    buffer: bytes, unpack_data: bool = True, verbose: bool = False
+def _buffer_read_mseed3(
+    handle: io.RawIOBase,
+    headonly: bool = False,
+    starttime: typing.Optional[obspy.UTCDateTime] = None,
+    endtime: typing.Optional[obspy.UTCDateTime] = None,
+    verbose: bool = False,
 ) -> obspy.Stream:
     r = utils._lib.mstl3_init(C.c_void_p())
 
+    buffer = np.fromfile(handle, dtype=np.uint8)
+
     flags = utils._MSF_SKIPNOTDATA
-    if unpack_data:
+    if not headonly:
         flags |= utils._MSF_UNPACKDATA
 
     utils._lib.mstl3_readbuffer(
