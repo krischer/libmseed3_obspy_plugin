@@ -151,3 +151,19 @@ def _source_id_to_nslc(sid: str) -> typing.Tuple[str, str, str, str]:
         m.group("loc"),
         m.group("band") + m.group("source") + m.group("position"),
     )
+
+
+def _nslc_to_source_id(
+    network: str, station: str, location: str, channel: str
+) -> str:
+    """
+    Parses network, station, location, channel codes to a source identifier.
+
+    This is a port of ms_nslc2sid() in libmseed but writing it in Python is
+    simpler than wrapping it.
+    """
+    if len(channel) == 3:
+        bsl = f"{channel[0]}_{channel[1]}_{channel[2]}"
+    else:
+        bsl = channel
+    return f"XFDSN:{network}_{station}_{location}_{bsl}"

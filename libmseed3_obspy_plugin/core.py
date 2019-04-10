@@ -173,3 +173,17 @@ def _trace_segment_to_trace(
     np.copyto(src=arr, dst=new_array)
     tr.data = new_array
     return tr
+
+
+def _write(stream: obspy.Stream(), filename: _f_types) -> None:
+    # Don't even bother passing on the extra kwargs - this should really be
+    # cleaned up on ObsPy's side.
+    return _buffer_proxy(
+        filename_or_buf=filename, function=_buffer_write_mseed3, stream=stream
+    )
+
+
+def _buffer_write_mseed3(handle: io.RawIOBase, stream: obspy.Stream) -> None:
+    # The main functionality of this function is to build up a MS3TraceList
+    # structure.
+    pass

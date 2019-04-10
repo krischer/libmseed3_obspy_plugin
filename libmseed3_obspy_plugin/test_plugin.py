@@ -24,6 +24,23 @@ def test_source_id_to_nslc(sid, net, sta, loc, chan):
 
 
 @pytest.mark.parametrize(
+    "net, sta, loc, chan, sid",
+    [
+        ("NET", "STA", "LOC", "BSP", "XFDSN:NET_STA_LOC_B_S_P"),
+        ("XX", "TEST", "", "LHZ", "XFDSN:XX_TEST__L_H_Z"),
+        ("XX", "TEST", "", "RANDOM", "XFDSN:XX_TEST__RANDOM"),
+    ],
+)
+def test_nslc_to_source_id(net, sta, loc, chan, sid):
+    assert (
+        utils._nslc_to_source_id(
+            network=net, station=sta, location=loc, channel=chan
+        )
+        == sid
+    )
+
+
+@pytest.mark.parametrize(
     "path, expected_result",
     # All the pack- files are MSEED3 files.
     list(zip(data.glob("pack-*-encoded.test.ref"), itertools.repeat(True))) +
