@@ -150,9 +150,11 @@ def _trace_segment_to_trace(
     tr.stats.mseed3.publication_version = publication_version
     tr.stats.mseed3.source_identifier = source_identifier
 
-    tr.stats.network, tr.stats.station, tr.stats.location, tr.stats.channel = utils._source_id_to_nslc(
-        sid=source_identifier
-    )
+    nslc = utils._source_id_to_nslc(sid=source_identifier)
+    tr.stats.network = nslc[0]
+    tr.stats.station = nslc[1]
+    tr.stats.location = nslc[2]
+    tr.stats.channel = nslc[3]
 
     dtype = utils.SAMPLE_TYPES[t_s.sampletype]
 
