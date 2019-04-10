@@ -1,5 +1,7 @@
 import ctypes as C  # NOQA
 import pathlib
+import re
+import typing
 import warnings
 
 import numpy as np
@@ -109,3 +111,43 @@ _lib.mstl3_readbuffer.argtypes = [
     C.c_int8,
 ]
 _lib.mstl3_readbuffer.restype = C.c_longlong
+
+_SID_REGEX = re.compile(
+    r"""
+    ([A-Z]+:)*           # Any number of agencies/namespaces
+    (?P<net>[A-Z]*)       # Network code
+    _
+    (?P<sta>[A-Z]*)       # Station code
+    _
+    (?P<loc>[A-Z]*)       # Location code
+    _
+    (?P<band>[A-Z]*)      # Channel badn
+    _
+    (?P<source>[A-Z]*)    # Channel source
+    _
+    (?P<position>[A-Z]*)  # Channel position
+    """,
+    re.X,
+)
+
+
+def _source_id_to_nslc(sid: str) -> typing.Tuple[str, str, str, str]:
+    """
+    Parses a source identifier to network, station, location, channel.
+
+    This is a port of ms_sid2nslc() in libmseed but writing it with a regex
+    is simpler than wrapping the code.
+    """
+    m = re.match(_SID_REGEX, sid)
+    if not m:
+        raise ValueError(
+            f"Source identifiers '{sid}' did not match the "
+            "expected pattern."
+        )
+
+    return (
+        m.group("net"),
+        m.group("sta"),
+        m.group("loc"),
+        m.group("band") + m.group("source") + m.group("position"),
+    )

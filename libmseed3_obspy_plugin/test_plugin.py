@@ -6,8 +6,21 @@ import obspy
 import pytest
 
 from libmseed3_obspy_plugin.core import _is_mseed3
+from libmseed3_obspy_plugin import utils
 
 data = pathlib.Path(__file__).parent / "src" / "libmseed" / "test"
+
+
+@pytest.mark.parametrize(
+    "sid, net, sta, loc, chan",
+    [
+        ("XFDSN:NET_STA_LOC_B_S_P", "NET", "STA", "LOC", "BSP"),
+        ("XFDSN:AGENCY:NET_STA_LOC_B_S_P", "NET", "STA", "LOC", "BSP"),
+        ("XFDSN:XX_TEST__L_H_Z", "XX", "TEST", "", "LHZ"),
+    ],
+)
+def test_source_id_to_nslc(sid, net, sta, loc, chan):
+    assert utils._source_id_to_nslc(sid=sid) == (net, sta, loc, chan)
 
 
 @pytest.mark.parametrize(
