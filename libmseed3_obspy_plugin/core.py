@@ -148,6 +148,11 @@ def _trace_segment_to_trace(
     tr.stats.mseed3 = obspy.core.AttribDict()
     tr.stats.mseed3.source_identifier = source_identifier
     tr.stats.mseed3.publication_version = publication_version
+    tr.stats.mseed3.source_identifier = source_identifier
+
+    tr.stats.network, tr.stats.station, tr.stats.location, tr.stats.channel = utils._source_id_to_nslc(
+        sid=source_identifier
+    )
 
     dtype = utils.SAMPLE_TYPES[t_s.sampletype]
 

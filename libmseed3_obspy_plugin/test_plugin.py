@@ -121,6 +121,10 @@ def test_read_by_unpacking_libmseed3_packed_data(path, dtype):
 
     assert len(st) == 1
     np.testing.assert_equal(st[0].data, data)
+    assert st[0].stats.network == "XX"
+    assert st[0].stats.station == "TEST"
+    assert st[0].stats.location == ""
+    assert st[0].stats.channel == "LHZ"
     assert st[0].stats.starttime == obspy.UTCDateTime(2012, 1, 1)
     assert st[0].stats.sampling_rate == 1.0
     assert st[0].data.dtype == dtype
