@@ -1,4 +1,5 @@
 import ctypes as C  # NOQA
+import enum
 import pathlib
 import re
 import typing
@@ -32,12 +33,64 @@ _MSF_ATENDOFFILE = 0x0020
 _nstime_t = C.c_longlong
 
 
+class Encoding(enum.Enum):
+    ASCII = 0
+    INT16 = 1
+    INT32 = 3
+    FLOAT32 = 4
+    FLOAT64 = 5
+    STEIM1 = 10
+    STEIM2 = 11
+
+
+# Maps dtype to allowed encodings. The first one is always the default encoding
+# for that data type.
+DTYPE_TO_ENCODING = {
+    np.dtype("int16"): [Encoding.INT16],
+    np.dtype("int32"): [Encoding.STEIM2, Encoding.STEIM1, Encoding.INT32],
+    np.dtype("float32"): [Encoding.FLOAT32],
+    np.dtype("float64"): [Encoding.FLOAT64],
+    np.dtype("|S1"): [Encoding.ASCII],
+}
+
+
+def _get_or_check_encoding(
+    data: np.ndarray, encoding: typing.Optional[Encoding] = None
+):
+    """
+    Helper function returning the encoding for a given data array.
+
+    If encoding is given it will check if the encoding is compatible with the
+    data, otherwise it will raise an Exception.
+    """
+    if data.dtype not in DTYPE_TO_ENCODING:
+        msg = (
+            f"dtype {data.dtype} not allowed. Please convert to one of the "
+            "supported dtypes: "
+            f"{', '.join(str(i) for i in DTYPE_TO_ENCODING.keys())}"
+        )
+        raise TypeError(msg)
+    allowed_encodings = DTYPE_TO_ENCODING[data.dtype]
+    if encoding is not None:
+        if encoding not in allowed_encodings:
+            msg = (
+                f"Encoding {encoding} is not compatible with dtype "
+                f"{data.dtype}. Please choose a different encoding or "
+                "convert your data."
+            )
+            raise ValueError(msg)
+        return encoding
+    return allowed_encodings[0]
+
+
 SAMPLE_TYPES = {
     b"a": np.dtype("|S1"),
-    b"i": np.int32,
-    b"f": np.float32,
-    b"d": np.float64,
+    b"i": np.dtype("int32"),
+    b"f": np.dtype("float32"),
+    b"d": np.dtype("float64"),
 }
+
+INV_SAMPLE_TYPES = {value: key for key, value in SAMPLE_TYPES.items()}
 
 
 class MS3TraceSeg(C.Structure):
@@ -111,6 +164,41 @@ _lib.mstl3_readbuffer.argtypes = [
     C.c_int8,
 ]
 _lib.mstl3_readbuffer.restype = C.c_longlong
+
+_lib.mstl3_pack.argtypes = [
+    # Source trace list.
+    C.POINTER(MS3TraceList),
+    # Callback function to do the actual writing.
+    C.CFUNCTYPE(None, C.POINTER(C.c_char), C.c_int, C.c_void_p),
+    # Pointer passed to the callback function.
+    C.c_void_p,
+    # Maximum record length.
+    C.c_int,
+    # Encoding.
+    C.c_int8,
+    # The number of packed samples - returned to the caller.
+    C.POINTER(C.c_longlong),
+    # flags.
+    C.c_uint,
+    # verbose,
+    C.c_int8,
+    # Pointer to a packed JSON string.
+    C.c_char_p,
+]
+# Returns the number of created records.
+_lib.mstl3_pack.restype = C.c_int
+
+
+class LibmseedMemory(C.Structure):
+    _fields_ = [
+        ("malloc", C.CFUNCTYPE(C.c_void_p, C.c_size_t)),
+        ("realloc", C.CFUNCTYPE(C.c_void_p, C.c_void_p, C.c_size_t)),
+        ("free", C.CFUNCTYPE(None, C.c_void_p)),
+    ]
+
+
+_libmseed_memory = C.cast(_lib.libmseed_memory, C.POINTER(LibmseedMemory))
+
 
 _SID_REGEX = re.compile(
     r"""

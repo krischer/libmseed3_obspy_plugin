@@ -37,6 +37,7 @@ setuptools.setup(
         "obspy.plugin.waveform.MSEED3": [
             "isFormat = libmseed3_obspy_plugin.core:_is_mseed3",
             "readFormat = libmseed3_obspy_plugin.core:_read_mseed3",
+            "writeFormat = libmseed3_obspy_plugin.core:_write_mseed3",
         ],
     },
 )

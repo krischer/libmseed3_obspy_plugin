@@ -1,3 +1,4 @@
+import io
 import itertools
 import pathlib
 
@@ -114,6 +115,7 @@ def test_read_by_unpacking_libmseed3_packed_data(path, dtype):
         160065, 154123, 141602, 122746, 98068, 68342, 34581, -1992, -39992,
         -77915, -114200, -147287, -175686, -198036, -213168, -220164,
         -218401, -207588, -187799, -159476], dtype=np.int32)
+    # fmt: on
 
     text_data = np.frombuffer(
         "I've seen things you people wouldn't believe. Attack ships on fire "
@@ -147,3 +149,53 @@ def test_read_by_unpacking_libmseed3_packed_data(path, dtype):
     assert st[0].data.dtype == dtype
     assert st[0].stats.mseed3.source_identifier == "XFDSN:XX_TEST__L_H_Z"
     assert st[0].stats.mseed3.publication_version == 1
+
+
+@pytest.mark.parametrize(
+    "dtype, encoding",
+    [
+        [np.int32, utils.Encoding.STEIM1],
+        [np.int32, utils.Encoding.STEIM2],
+        [np.int32, utils.Encoding.INT32],
+        [np.int16, utils.Encoding.INT16],
+        [np.float32, utils.Encoding.FLOAT32],
+        [np.float64, utils.Encoding.FLOAT64],
+        [np.dtype("|S1"), utils.Encoding.ASCII],
+    ],
+)
+def test_write_read_roundtripping(dtype, encoding):
+    if encoding == utils.Encoding.ASCII:
+        data = np.frombuffer(
+            "I've seen things you people wouldn't believe. Attack ships on "
+            "fire off the shoulder of Orion. I watched C-beams glitter in the "
+            "dark near the Tannhäuser Gate. All those moments will be lost in "
+            "time, like tears...in...rain. Time to die.".encode(),
+            dtype=np.dtype("|S1"),
+        )
+    else:
+        data = np.arange(500, dtype=dtype)
+
+    tr = obspy.Trace(data=data)
+    tr.stats.network = "AA"
+    tr.stats.station = "BB"
+    tr.stats.location = "CC"
+    tr.stats.channel = "BHZ"
+    tr.stats.starttime = obspy.UTCDateTime(2015, 2, 4, 2, 4, 5, 32)
+    tr.stats.sampling_rate = 22.0
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        st_new = obspy.read(buf)
+
+    assert len(st_new) == 1
+    tr_new = st_new[0]
+
+    assert tr_new.stats.network == "AA"
+    assert tr_new.stats.station == "BB"
+    assert tr_new.stats.location == "CC"
+    assert tr_new.stats.channel == "BHZ"
+    assert tr_new.stats.starttime == obspy.UTCDateTime(2015, 2, 4, 2, 4, 5, 32)
+    assert tr_new.stats.sampling_rate == 22.0
+    assert tr_new.stats.mseed3.source_identifier == "XFDSN:AA_BB_CC_B_H_Z"
+    np.testing.assert_equal(tr.data, tr_new.data)
