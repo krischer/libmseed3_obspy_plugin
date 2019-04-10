@@ -111,3 +111,5 @@ def test_read_by_unpacking_libmseed3_packed_data(path, dtype):
     assert st[0].stats.starttime == obspy.UTCDateTime(2012, 1, 1)
     assert st[0].stats.sampling_rate == 1.0
     assert st[0].data.dtype == dtype
+    assert st[0].stats.mseed3.source_identifier == "XFDSN:XX_TEST__L_H_Z"
+    assert st[0].stats.mseed3.publication_version == 1

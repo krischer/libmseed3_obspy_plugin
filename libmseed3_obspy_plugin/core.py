@@ -100,9 +100,12 @@ def _buffer_read_mseed3(
         C.pointer(r),
         buffer,
         buffer.size,
+        # Default time and sample rate tolerance.
         -1.0,
         -1.0,
+        # splitversion - always split!
         1,
+        # flags
         flags,
         # verbose
         1 if bool else 0,
@@ -121,16 +124,30 @@ def _tracelist_to_stream(t_l):
         current_segment = t.first
         for _ in range(t.numsegments):
             s = current_segment.contents
-            st.traces.append(_trace_segment_to_trace(s, id=t.sid.decode()))
+            st.traces.append(
+                _trace_segment_to_trace(
+                    s,
+                    source_identifier=t.sid.decode(),
+                    publication_version=t.pubversion,
+                )
+            )
             current_segment = current_segment.contents.next
         current_trace = current_trace.contents.next
     return st
 
 
-def _trace_segment_to_trace(t_s, id: str) -> obspy.Trace:
+def _trace_segment_to_trace(
+    t_s, source_identifier: str, publication_version: int
+) -> obspy.Trace:
     tr = obspy.Trace()
+
+    # Fill in headers.
     tr.stats.starttime = obspy.UTCDateTime(t_s.starttime / 1e9)
     tr.stats.sampling_rate = t_s.samprate
+
+    tr.stats.mseed3 = obspy.core.AttribDict()
+    tr.stats.mseed3.source_identifier = source_identifier
+    tr.stats.mseed3.publication_version = publication_version
 
     dtype = utils.SAMPLE_TYPES[t_s.sampletype]
 
