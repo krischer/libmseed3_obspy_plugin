@@ -56,7 +56,7 @@ DTYPE_TO_ENCODING = {
 
 def _get_or_check_encoding(
     data: np.ndarray, encoding: typing.Optional[Encoding] = None
-):
+) -> Encoding:
     """
     Helper function returning the encoding for a given data array.
 
@@ -156,7 +156,7 @@ class MS3Record(C.Structure):
         ("extralength", C.c_ushort),
         ("datalength", C.c_ushort),
         ("extra", C.c_char_p),
-        ("datasamples", C.c_void_p),
+        ("datasamples", C.POINTER(C.c_uint8)),
         ("numsamples", C.c_longlong),
         ("sampletype", C.c_char),
     ]

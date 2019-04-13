@@ -209,14 +209,14 @@ def _buffer_write_mseed3(
     verbose: bool = False,
 ) -> None:
     # Check all encodings - this is redundant but will raise an error if
-    # encoding or dtypes are invalid/incompatible.
+    # encoding or dtypes are invalid/incompatible without having written
+    # anything beforehand.
     [
         utils._get_or_check_encoding(data=tr.data, encoding=encoding)
         for tr in stream
     ]
 
-    # We'll do this separately for every single trace - this has the advantage
-    # that we can set encoding and what not separately for every trace.
+    # Write each trace separately.
     for trace in stream:
         _buffer_write_mseed3_trace(
             handle=handle,
@@ -244,18 +244,14 @@ def _buffer_write_mseed3_trace(
         trace = trace.copy()
         trace.data = np.require(trace.data, dtype=np.int32)
 
-    trace_id = _trace_to_trace_id(
-        trace=trace, publication_version=publication_version
+    ms_record = _trace_to_ms_record(
+        trace=trace,
+        publication_version=publication_version,
+        record_length=max_record_length,
+        encoding=encoding,
     )
 
-    trace_list = utils.MS3TraceList(numtraces=1)
-    trace_list.traces.contents = trace_id
-    trace_list.last.contents = trace_id
-
     packed_samples = C.c_longlong(0)
-
-    if encoding is None:
-        encoding = 1
 
     # Callback function for mstl3_pack to actually write the file
     def record_handler(record, reclen, _stream):
@@ -266,28 +262,25 @@ def _buffer_write_mseed3_trace(
         record_handler
     )
 
-    utils._lib.mstl3_pack(
-        C.pointer(trace_list),
+    utils._lib.msr3_pack(
+        C.pointer(ms_record),
         rec_handler,
         # Pointer passed to the callback function.
         C.c_void_p(),
-        # Maximum record length.
-        max_record_length,
-        # Encoding.
-        encoding.value,
         # The number of packed samples - returned to the caller.
         C.pointer(packed_samples),
         # flags. Always flush the data - seems to be what we want in ObsPy.
         utils._MSF_FLUSHDATA,
         # verbose,
         1 if verbose else 0,
-        # Pointer to a packed JSON string.
-        C.c_char_p(),
     )
 
 
-def _trace_to_trace_id(
-    trace: obspy.Trace, publication_version: typing.Optional[int] = None
+def _trace_to_ms_record(
+    trace: obspy.Trace,
+    record_length: int,
+    encoding: utils.Encoding,
+    publication_version: typing.Optional[int] = None,
 ):
     # Deal with the publication version. Code is a bit ugly but not much to be
     # done about it.
@@ -308,29 +301,38 @@ def _trace_to_trace_id(
     # Copy the data as libmseed does free the memory.
     C.memmove(datasamples, trace.data.ctypes.get_data(), bytecount)
 
-    trace_seg = utils.MS3TraceSeg(
-        starttime=trace.stats.starttime.ns,
-        endtime=trace.stats.endtime.ns,
-        samprate=trace.stats.sampling_rate,
-        samplecnt=trace.stats.npts,
-        datasamples=datasamples,
-        numsamples=trace.stats.npts,
-        sampletype=utils.INV_SAMPLE_TYPES[trace.data.dtype],
-    )
-
-    trace_id = utils.MS3TraceID(
+    rec = utils.MS3Record(
+        record=C.c_char_p(),
+        reclen=record_length,
+        # Nothing requires swapping.
+        swapflag=0,
         sid=utils._nslc_to_source_id(
             network=trace.stats.network,
             station=trace.stats.station,
             location=trace.stats.location,
             channel=trace.stats.channel,
         ).encode(),
-        earliest=trace.stats.starttime.ns,
-        latest=trace.stats.endtime.ns,
+        # XXX: Is this used during writing?
+        formatversion=3,
+        # Record-level bit flags.
+        flags=0,
+        starttime=trace.stats.starttime.ns,
+        # XXX: Documented as "Nominal sample rate as samples/second (Hz) or
+        # period (s)"
+        #
+        # This is not the same. I guess its the sampling rate in Hz?
+        samprate=trace.stats.sampling_rate,
+        encoding=encoding.value,
         pubversion=pub_ver,
-        numsegments=1,
+        samplecnt=trace.stats.npts,
+        # Should not matter during writing.
+        crc=0,
+        extralength=0,
+        datalength=0,
+        extra=C.c_char_p(),
+        datasamples=datasamples,
+        numsamples=trace.stats.npts,
+        sampletype=utils.INV_SAMPLE_TYPES[trace.data.dtype],
     )
-    trace_id.first.contents = trace_seg
-    trace_id.last.contents = trace_seg
 
-    return trace_id
+    return rec
