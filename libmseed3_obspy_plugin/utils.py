@@ -139,11 +139,51 @@ class MS3TraceList(C.Structure):
     ]
 
 
+class MS3Record(C.Structure):
+    _fields_ = [
+        ("record", C.c_char_p),
+        ("reclen", C.c_int),
+        ("swapflag", C.c_uint8),
+        ("sid", C.c_char * _LM_SIDLEN),
+        ("formatversion", C.c_uint8),
+        ("flags", C.c_uint8),
+        ("starttime", _nstime_t),
+        ("samprate", C.c_double),
+        ("encoding", C.c_int8),
+        ("pubversion", C.c_uint8),
+        ("samplecnt", C.c_longlong),
+        ("crc", C.c_uint),
+        ("extralength", C.c_ushort),
+        ("datalength", C.c_ushort),
+        ("extra", C.c_char_p),
+        ("datasamples", C.c_void_p),
+        ("numsamples", C.c_longlong),
+        ("sampletype", C.c_char),
+    ]
+
+
 _lib.mstl3_init.argtypes = [C.c_void_p]
 _lib.mstl3_init.restype = C.POINTER(MS3TraceList)
 
 _lib.mstl3_free.argtypes = [C.POINTER(C.POINTER(MS3TraceList)), C.c_int8]
 _lib.mstl3_free.restype = C.c_void_p
+
+_lib.msr3_pack.argtypes = [
+    # Source record.
+    C.POINTER(MS3Record),
+    # Callback function to do the actual writing.
+    C.CFUNCTYPE(None, C.POINTER(C.c_char), C.c_int, C.c_void_p),
+    # Pointer passed to the callback function.
+    C.c_void_p,
+    # The number of packed samples - returned to the caller.
+    C.POINTER(C.c_longlong),
+    # flags,
+    C.c_uint,
+    # verbosity
+    C.c_int8,
+]
+_lib.msr3_pack.restype = C.c_int
+
 
 _lib.mstl3_readbuffer.argtypes = [
     # Destination trace list.
