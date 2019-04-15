@@ -609,3 +609,11 @@ def test_writing_and_reading_publication_versions():
         st.write(buf, format="mseed3", publication_version=5)
         buf.seek(0, 0)
         assert _get_pub_ids(obspy.read(buf)) == [5, 5, 5]
+
+    # Defaults to 1.
+    for tr in st:
+        del tr.stats.mseed3
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        assert _get_pub_ids(obspy.read(buf)) == [1, 1, 1]
