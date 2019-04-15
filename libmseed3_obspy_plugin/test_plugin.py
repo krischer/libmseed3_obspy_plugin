@@ -660,3 +660,61 @@ def test_max_record_length():
     # This should be more or less stable. And it also makes sense. Smaller
     # records result in more headers which bears some overhead.
     assert sizes == [3121, 4033, 3121]
+
+
+def test_record_level_flags():
+    tr1 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr1.stats.station = "AA"
+    tr1.stats.mseed3 = obspy.core.AttribDict(record_level_flags=1)
+
+    tr2 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr2.stats.station = "BB"
+    tr2.stats.mseed3 = obspy.core.AttribDict(record_level_flags=2)
+
+    tr3 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr3.stats.station = "CC"
+    tr3.stats.mseed3 = obspy.core.AttribDict(record_level_flags=3)
+
+    st = obspy.Stream(traces=[tr1, tr2, tr3])
+
+    def _get_record_level_flags(stream):
+        stream.sort()
+        return [
+            tr.stats.mseed3.record_level_metadata[0].flags for tr in stream
+        ]
+
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        assert _get_record_level_flags(
+            obspy.read(buf, parse_record_level_metadata=True)
+        ) == [1, 2, 3]
+
+        # If parse_metadata is not given or False, the meta data fill not be
+        # read.
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf)[0]
+        assert "record_level_metadata" not in tr_out.stats.mseed3.keys()
+
+        # But if it is, its there.
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf, parse_record_level_metadata=True)[0]
+        assert "record_level_metadata" in tr_out.stats.mseed3.keys()
+
+    # Can be overwritten.
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3", record_level_flags=5)
+        buf.seek(0, 0)
+        assert _get_record_level_flags(
+            obspy.read(buf, parse_record_level_metadata=True)
+        ) == [5, 5, 5]
+
+    # If not set, they default to 0.
+    for tr in st:
+        del tr.stats.mseed3
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        assert _get_record_level_flags(
+            obspy.read(buf, parse_record_level_metadata=True)
+        ) == [0, 0, 0]

@@ -76,6 +76,7 @@ def _read_mseed3(
     publication_versions: typing.Optional[
         typing.Union[int, typing.List[int]]
     ] = None,
+    parse_record_level_metadata: bool = False,
     verbose: typing.Union[bool, int] = False,
     **kwargs,
 ) -> obspy.Stream():
@@ -89,6 +90,8 @@ def _read_mseed3(
         namespaces, e.g. ``XFDSN`` and any potential agency.
     :param publication_versions: A list of publication versions to retain. If
         not given, all publication versions will be read.
+    :param parse_record_level_metadata: If True, per-level meta-data will be
+        parsed and stored in each Trace's stats attribute dictionary.
     :param verbose: Controls verbosity - passed to libmseed.
     """
     # Don't even bother passing on the extra kwargs - this should really be
@@ -100,9 +103,10 @@ def _read_mseed3(
         reset_fp=False,
         headonly=headonly,
         starttime=starttime,
+        endtime=endtime,
         sidpattern=sidpattern,
         publication_versions=publication_versions,
-        endtime=endtime,
+        parse_record_level_metadata=parse_record_level_metadata,
         verbose=verbose,
     )
 
@@ -114,6 +118,7 @@ def _buffer_read_mseed3(
     endtime: typing.Optional[obspy.UTCDateTime],
     sidpattern: typing.Optional[str],
     publication_versions: typing.Optional[typing.Union[int, typing.List[int]]],
+    parse_record_level_metadata: bool,
     verbose: typing.Union[bool, int],
 ) -> obspy.Stream:
     r = utils._lib.mstl3_init(C.c_void_p())
@@ -123,6 +128,8 @@ def _buffer_read_mseed3(
     flags = utils._MSF_SKIPNOTDATA
     if not headonly:
         flags |= utils._MSF_UNPACKDATA
+    if parse_record_level_metadata:
+        flags |= utils._MSF_STOREMETADATA
 
     # Set-up tolerance callbacks.
     # XXX: Once libmseed3 has left pre-release mode this should be written in C
@@ -182,7 +189,11 @@ def _buffer_read_mseed3(
         msg = "No data in file with the given selection."
         raise ValueError(msg)
 
-    st = _tracelist_to_stream(r, headonly=headonly)
+    st = _tracelist_to_stream(
+        r,
+        headonly=headonly,
+        parse_record_level_metadata=parse_record_level_metadata,
+    )
     utils._lib.mstl3_free(C.pointer(r), 0)
     return st
 
@@ -259,7 +270,9 @@ def _assemble_selections(
         return selections
 
 
-def _tracelist_to_stream(t_l, headonly: bool):
+def _tracelist_to_stream(
+    t_l, headonly: bool, parse_record_level_metadata: bool
+):
     st = obspy.Stream()
 
     current_trace = t_l.contents.traces
@@ -274,6 +287,7 @@ def _tracelist_to_stream(t_l, headonly: bool):
                     source_identifier=t.sid.decode(),
                     publication_version=t.pubversion,
                     headonly=headonly,
+                    parse_record_level_metadata=parse_record_level_metadata,
                 )
             )
             current_segment = current_segment.contents.next
@@ -282,7 +296,11 @@ def _tracelist_to_stream(t_l, headonly: bool):
 
 
 def _trace_segment_to_trace(
-    t_s, source_identifier: str, publication_version: int, headonly: bool
+    t_s,
+    source_identifier: str,
+    publication_version: int,
+    headonly: bool,
+    parse_record_level_metadata: bool,
 ) -> obspy.Trace:
     tr = obspy.Trace()
 
@@ -327,7 +345,29 @@ def _trace_segment_to_trace(
     new_array = np.empty_like(arr)
     np.copyto(src=arr, dst=new_array)
     tr.data = new_array
+
+    if parse_record_level_metadata:
+        tr.stats.mseed3.record_level_metadata = _metadata_to_attrib_dict(
+            t_s.metadata.contents
+        )
+
     return tr
+
+
+def _metadata_to_attrib_dict(md, collection=None):
+    if collection is None:
+        collection = []
+
+    out = obspy.core.AttribDict()
+    out.starttime = obspy.UTCDateTime(md.starttime / 1e9)
+    out.endtime = obspy.UTCDateTime(md.endtime / 1e9)
+    out.flags = md.flags
+
+    collection.append(out)
+
+    if md.next:
+        _metadata_to_attrib_dict(md.next.contents, collection=collection)
+    return collection
 
 
 def _write_mseed3(
@@ -335,6 +375,7 @@ def _write_mseed3(
     filename: _f_types,
     max_record_length: int = 4096,
     publication_version: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[int] = None,
     encoding: typing.Optional[typing.Union[utils.Encoding, str]] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
@@ -342,6 +383,8 @@ def _write_mseed3(
     :param max_record_length: Maximum record length.
     :param publication_version: Publication version for all traces if given.
         Will overwrite any per-trace settings.
+    :param record_level_flags: Record level flags for every record. Will
+        overwrite any per-trace settings if given.
     :param encoding: Data encoding. Must be compatible with the underlying
         dtype. If not given it will be chosen automatically. Int32 data will
         default to STEIM2 encoding.
@@ -361,6 +404,7 @@ def _write_mseed3(
         stream=stream,
         max_record_length=max_record_length,
         publication_version=publication_version,
+        record_level_flags=record_level_flags,
         verbose=verbose,
         encoding=encoding,
     )
@@ -372,6 +416,7 @@ def _buffer_write_mseed3(
     max_record_length: int,
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[int] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
     # Check all encodings - this is redundant but will raise an error if
@@ -390,6 +435,7 @@ def _buffer_write_mseed3(
             max_record_length=max_record_length,
             encoding=encoding,
             publication_version=publication_version,
+            record_level_flags=record_level_flags,
             verbose=verbose,
         )
 
@@ -400,6 +446,7 @@ def _buffer_write_mseed3_trace(
     max_record_length: int,
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[int] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
 
@@ -413,6 +460,7 @@ def _buffer_write_mseed3_trace(
     ms_record = _trace_to_ms_record(
         trace=trace,
         publication_version=publication_version,
+        record_level_flags=record_level_flags,
         record_length=max_record_length,
         encoding=encoding,
     )
@@ -455,6 +503,7 @@ def _trace_to_ms_record(
     record_length: int,
     encoding: utils.Encoding,
     publication_version: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[int] = None,
 ):
     # Deal with the publication version. Code is a bit ugly but not much to be
     # done about it.
@@ -468,6 +517,15 @@ def _trace_to_ms_record(
     # Default to 1.
     if pub_ver is None:
         pub_ver = 1
+
+    # Same with the record level flags.
+    flags = 0
+    # Get it from the stats.mseed3 dict.
+    if "mseed3" in trace.stats and "record_level_flags" in trace.stats.mseed3:
+        flags = trace.stats.mseed3.record_level_flags
+    # If given, always use that.
+    if record_level_flags:
+        flags = record_level_flags
 
     rec = utils.MS3Record(
         record=C.c_char_p(),
@@ -483,7 +541,7 @@ def _trace_to_ms_record(
         # XXX: Is this used during writing?
         formatversion=3,
         # Record-level bit flags.
-        flags=0,
+        flags=flags,
         starttime=trace.stats.starttime.ns,
         # xxx: documented as "nominal sample rate as samples/second (hz) or
         # period (s)"
