@@ -89,6 +89,7 @@ def _read_mseed3(
         namespaces, e.g. ``XFDSN`` and any potential agency.
     :param publication_versions: A list of publication versions to retain. If
         not given, all publication versions will be read.
+    :param verbose: Controls verbosity - passed to libmseed.
     """
     # Don't even bother passing on the extra kwargs - this should really be
     # cleaned up on ObsPy's side.
@@ -337,6 +338,13 @@ def _write_mseed3(
     encoding: typing.Optional[typing.Union[utils.Encoding, str]] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
+    """
+    :param max_record_length: Maximum record length.
+    :param publication_version: Publication version for all traces if given.
+        Will overwrite any per-trace settings.
+    :param encoding: Data encoding.
+    :param verbose: Controls verbosity - passed to `libmseed`.
+    """
     # Map encoding string to enumerated value.
     if isinstance(encoding, str):
         encoding = utils.Encoding[encoding.upper()]
