@@ -142,12 +142,12 @@ def _buffer_read_mseed3(
         utils._verbosity_to_int(verbose),
     )
 
-    st = _tracelist_to_stream(r)
+    st = _tracelist_to_stream(r, headonly=headonly)
     utils._lib.mstl3_free(C.pointer(r), 0)
     return st
 
 
-def _tracelist_to_stream(t_l):
+def _tracelist_to_stream(t_l, headonly: bool):
     st = obspy.Stream()
 
     current_trace = t_l.contents.traces
@@ -161,6 +161,7 @@ def _tracelist_to_stream(t_l):
                     s,
                     source_identifier=t.sid.decode(),
                     publication_version=t.pubversion,
+                    headonly=headonly
                 )
             )
             current_segment = current_segment.contents.next
@@ -169,7 +170,8 @@ def _tracelist_to_stream(t_l):
 
 
 def _trace_segment_to_trace(
-    t_s, source_identifier: str, publication_version: int
+    t_s, source_identifier: str, publication_version: int,
+    headonly: bool
 ) -> obspy.Trace:
     tr = obspy.Trace()
 
@@ -187,6 +189,16 @@ def _trace_segment_to_trace(
     tr.stats.station = nslc[1]
     tr.stats.location = nslc[2]
     tr.stats.channel = nslc[3]
+
+    # Headonly.
+    if t_s.sampletype == b"\x00":
+        # Sanity check.
+        if t_s.numsamples != 0:
+            msg = "Unpacked samples but could not determine sample type."
+            raise ValueError(msg)
+        tr.data = np.array([])
+        tr.stats.npts = t_s.samplecnt
+        return tr
 
     dtype = utils.SAMPLE_TYPES[t_s.sampletype]
 

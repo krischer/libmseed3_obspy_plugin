@@ -292,3 +292,14 @@ def test_verbosity_flag_reading(capfd):
     c = capfd.readouterr()
     assert c.out == ""
     assert len(c.err) > 20
+
+
+def test_headonly():
+    tr = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf, headonly=True)[0]
+
+    assert tr_out.stats.npts == 10
+    np.testing.assert_equal(tr_out.data, np.array([]))
