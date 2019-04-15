@@ -469,12 +469,6 @@ def _trace_to_ms_record(
     if pub_ver is None:
         pub_ver = 1
 
-    bytecount = trace.data.itemsize * trace.data.size
-    datasamples = utils._libmseed_memory.contents.malloc(bytecount)
-    datasamples = C.cast(datasamples, C.POINTER(C.c_uint8))
-    # Copy the data as libmseed does free the memory.
-    C.memmove(datasamples, trace.data.ctypes.get_data(), bytecount)
-
     rec = utils.MS3Record(
         record=C.c_char_p(),
         reclen=record_length,
@@ -504,7 +498,7 @@ def _trace_to_ms_record(
         extralength=0,
         datalength=0,
         extra=C.c_char_p(),
-        datasamples=datasamples,
+        datasamples=trace.data.ctypes.data_as(C.POINTER(C.c_uint8)),
         numsamples=trace.stats.npts,
         sampletype=utils.INV_SAMPLE_TYPES[trace.data.dtype],
     )
