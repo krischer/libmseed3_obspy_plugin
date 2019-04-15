@@ -564,12 +564,13 @@ def _trace_to_ms_record(
         ).encode()
         # Give it a different name to not have it garbage collected before its
         # time.
-        ed = np.frombuffer(extra_data, dtype=np.uint8)
-        extra_data_length = len(ed)
-        extra_data = ed.ctypes.data_as(C.POINTER(C.c_uint8))
+        _extra_data_array = np.frombuffer(extra_data, dtype=np.uint8)
+        extra_data_length = len(_extra_data_array)
+        extra_data = _extra_data_array.ctypes.data_as(C.POINTER(C.c_uint8))
     else:
         extra_data = None
         extra_data_length = 0
+        _extra_data_array = None
 
     rec = utils.MS3Record(
         record=C.c_char_p(),
@@ -603,5 +604,9 @@ def _trace_to_ms_record(
         numsamples=trace.stats.npts,
         sampletype=utils.INV_SAMPLE_TYPES[trace.data.dtype],
     )
+
+    # Bind the lifetime of the data array to the lifetime of the record as it
+    # is needed to be written. Bit of a hack but it works.
+    rec._extra_data_array = _extra_data_array
 
     return rec

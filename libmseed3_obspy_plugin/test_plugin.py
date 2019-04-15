@@ -750,3 +750,68 @@ def test_record_level_metadata():
             }
         ),
     ]
+
+
+def test_record_level_json():
+    tr1 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr1.stats.station = "AA"
+    tr1.stats.mseed3 = obspy.core.AttribDict(
+        record_level_extra_data={"hallo": "friend"}
+    )
+
+    tr2 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr2.stats.station = "BB"
+    tr2.stats.mseed3 = obspy.core.AttribDict(
+        record_level_extra_data={"yes": [1, 2, 3]}
+    )
+
+    st = obspy.Stream(traces=[tr1, tr2])
+
+    def _get_record_level_json(stream):
+        stream.sort()
+        return [
+            tr.stats.mseed3.record_level_metadata[0].extra_data
+            for tr in stream
+        ]
+
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        assert _get_record_level_json(
+            obspy.read(buf, parse_record_level_metadata=True)
+        ) == [{"hallo": "friend"}, {"yes": [1, 2, 3]}]
+
+        # If parse_metadata is not given or False, the meta data fill not be
+        # read.
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf)[0]
+        assert "record_level_metadata" not in tr_out.stats.mseed3.keys()
+
+        # But if it is, its there.
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf, parse_record_level_metadata=True)[0]
+        assert "record_level_metadata" in tr_out.stats.mseed3.keys()
+
+    # Can be overwritten.
+    with io.BytesIO() as buf:
+        st.write(
+            buf,
+            format="mseed3",
+            record_level_extra_data={"a": 2.2, "b": False},
+        )
+        buf.seek(0, 0)
+        assert _get_record_level_json(
+            obspy.read(buf, parse_record_level_metadata=True)
+        ) == [{"a": 2.2, "b": False}, {"a": 2.2, "b": False}]
+
+    # If not set, there just will be none.
+    for tr in st:
+        del tr.stats.mseed3
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf, parse_record_level_metadata=True)[0]
+        assert (
+            "extra_data"
+            not in tr_out.stats.mseed3.record_level_metadata[0].keys()
+        )
