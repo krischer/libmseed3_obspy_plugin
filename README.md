@@ -45,3 +45,6 @@ It currently has two format specific attributes:
 AttribDict({'source_identifier': 'XFDSN:XX_TEST__L_H_Z',
             'publication_version': 1})
 ```
+
+The `publication_version` will also be used during writing so a separate
+`publication_version` can be written for every `Trace.`
