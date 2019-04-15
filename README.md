@@ -64,6 +64,9 @@ The `publication_version` will also be used during writing so a separate
 * `endtime`: Only read data samples before or at the end time.
 * `sidpattern`: Only keep records whose SID pattern match the given pattern. Please note that the pattern must also includes the namespaces, e.g. `XFDSN` and any potential agency.
 * `publication_versions`: A list of publication versions to retain. If not given, all publication versions will be read.
+* `parse_record_level_metadata`: If True, per-record meta-data will be parsed
+  and stored in each Trace's stats attribute dictionary. This is potentially
+  much slower.
 * `verbose`: Controls verbosity - passed to `libmseed`.
 
 **Example:**
@@ -78,6 +81,10 @@ st = obspy.read("file.ms3", starttime=obspy.UTCDateTime(2012, 1, 1),
 
 * `max_record_length`: Maximum record length.
 * `publication_version`: Publication version for all traces if given. Will overwrite any per-trace settings.
+* `record_level_flags`: Record level flags for every record. Will
+  overwrite any per-trace settings if given.
+* `record_level_extra_data`: Record level extra data that will be stored as a
+  compact JSON string with each record. Will overwrite any per-trace settings.
 * `encoding`: Data encoding. Must be compatible with the underlying dtype. If not given it will be chosen automatically. Int32 data will default to STEIM2 encoding.
 * `verbose`: Controls verbosity - passed to `libmseed`.
 

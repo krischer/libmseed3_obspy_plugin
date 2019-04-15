@@ -91,7 +91,7 @@ def _read_mseed3(
         namespaces, e.g. ``XFDSN`` and any potential agency.
     :param publication_versions: A list of publication versions to retain. If
         not given, all publication versions will be read.
-    :param parse_record_level_metadata: If True, per-level meta-data will be
+    :param parse_record_level_metadata: If True, per-record meta-data will be
         parsed and stored in each Trace's stats attribute dictionary.
     :param verbose: Controls verbosity - passed to libmseed.
     """
