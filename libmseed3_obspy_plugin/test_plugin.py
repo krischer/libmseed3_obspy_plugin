@@ -230,4 +230,13 @@ def test_read_write_roundtripping_different_dtypes_per_trace():
         buf.seek(0, 0)
         st2 = obspy.read(buf)
 
+    # Delete mseed3 spectific attributes filled during reading.
+    for tr in st2:
+        del tr.stats.mseed3
+        del tr.stats._format
+
     assert st == st2
+
+    # Also assert the dtypes.
+    for tr1, tr2 in zip(st, st2):
+        assert tr1.data.dtype == tr2.data.dtype
