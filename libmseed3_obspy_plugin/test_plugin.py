@@ -578,3 +578,34 @@ def test_setting_encoding():
     # This should be stable and also makes logical sense in that STEIM2
     # compressed better than STEIM1.
     assert sizes == [849, 305, 241]
+
+
+def test_writing_and_reading_publication_versions():
+    tr1 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr1.stats.station = "AA"
+    tr1.stats.mseed3 = obspy.core.AttribDict(publication_version=1)
+
+    tr2 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr2.stats.station = "BB"
+    tr2.stats.mseed3 = obspy.core.AttribDict(publication_version=2)
+
+    tr3 = obspy.Trace(data=np.arange(10, dtype=np.int32))
+    tr3.stats.station = "CC"
+    tr3.stats.mseed3 = obspy.core.AttribDict(publication_version=3)
+
+    st = obspy.Stream(traces=[tr1, tr2, tr3])
+
+    def _get_pub_ids(stream):
+        stream.sort()
+        return [tr.stats.mseed3.publication_version for tr in stream]
+
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        assert _get_pub_ids(obspy.read(buf)) == [1, 2, 3]
+
+    # Can be overwritten.
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3", publication_version=5)
+        buf.seek(0, 0)
+        assert _get_pub_ids(obspy.read(buf)) == [5, 5, 5]
