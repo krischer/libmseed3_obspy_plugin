@@ -275,6 +275,14 @@ def _buffer_write_mseed3_trace(
         1 if verbose else 0,
     )
 
+    # Assure all samples have been packed.
+    if packed_samples.value != trace.stats.npts:
+        msg = (
+            f"Only {packed_samples.value} samples out of "
+            f"{trace.stats.npts} samples have been packed."
+        )
+        raise ValueError(msg)
+
 
 def _trace_to_ms_record(
     trace: obspy.Trace,
