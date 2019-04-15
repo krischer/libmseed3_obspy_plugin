@@ -231,7 +231,17 @@ def _assemble_selections(
             # We need a new selections struct for every publication version.
             current_selection = selections
             for p in pub_ver:
-                s = utils.MS3Selections(sidpattern=b"*", pubversion=p)
+                # Everything has to be repeated as only that will constitute a
+                # valid selection.
+                s = utils.MS3Selections(
+                    sidpattern=selections.sidpattern, pubversion=p
+                )
+                if starttime is not None or endtime is not None:
+                    t = utils.MS3SelectTime(
+                        starttime=selections.timewindows.contents.starttime,
+                        endtime=selections.timewindows.contents.endtime,
+                    )
+                    s.timewindows.contents = t
                 current_selection.next.contents = s
                 current_selection = s
         else:

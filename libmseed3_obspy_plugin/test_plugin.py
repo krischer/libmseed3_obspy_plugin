@@ -428,10 +428,20 @@ def test_assemble_selections():
         },
         "pubversion": 2,
         "next": {
-            "sidpattern": "*",
-            "timewindows": None,
+            "sidpattern": "HALLO",
+            "timewindows": {
+                "starttime": 1293840000000000000,
+                "endtime": 1325376000000000000,
+            },
             "pubversion": 3,
-            "next": {"sidpattern": "*", "timewindows": None, "pubversion": 5},
+            "next": {
+                "sidpattern": "HALLO",
+                "timewindows": {
+                    "starttime": 1293840000000000000,
+                    "endtime": 1325376000000000000,
+                },
+                "pubversion": 5,
+            },
         },
     }
 
