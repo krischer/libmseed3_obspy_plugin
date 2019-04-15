@@ -718,3 +718,28 @@ def test_record_level_flags():
         assert _get_record_level_flags(
             obspy.read(buf, parse_record_level_metadata=True)
         ) == [0, 0, 0]
+
+
+def test_record_level_metadata():
+    tr1 = obspy.Trace(data=np.arange(10000, dtype=np.int32))
+    with io.BytesIO() as buf:
+        tr1.write(buf, format="mseed3", record_level_flags=5)
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf, parse_record_level_metadata=True)[0]
+
+    assert tr_out.stats.mseed3.record_level_metadata == [
+        obspy.core.AttribDict(
+            {
+                "starttime": obspy.UTCDateTime(1970, 1, 1, 0, 0),
+                "endtime": obspy.UTCDateTime(1970, 1, 1, 1, 50),
+                "flags": 5,
+            }
+        ),
+        obspy.core.AttribDict(
+            {
+                "starttime": obspy.UTCDateTime(1970, 1, 1, 1, 50, 1),
+                "endtime": obspy.UTCDateTime(1970, 1, 1, 2, 46, 39),
+                "flags": 5,
+            }
+        ),
+    ]

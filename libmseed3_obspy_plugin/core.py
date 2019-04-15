@@ -350,6 +350,10 @@ def _trace_segment_to_trace(
         tr.stats.mseed3.record_level_metadata = _metadata_to_attrib_dict(
             t_s.metadata.contents
         )
+        # They are in inverse order.
+        tr.stats.mseed3.record_level_metadata = list(
+            reversed(tr.stats.mseed3.record_level_metadata)
+        )
 
     return tr
 
