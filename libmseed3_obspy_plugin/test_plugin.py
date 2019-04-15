@@ -240,3 +240,16 @@ def test_read_write_roundtripping_different_dtypes_per_trace():
     # Also assert the dtypes.
     for tr1, tr2 in zip(st, st2):
         assert tr1.data.dtype == tr2.data.dtype
+
+
+def test_roundtripping_multi_record_file():
+    tr = obspy.Trace(data=np.arange(10000, dtype=np.float64))
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", verbose=2)
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf, verbose=2)[0]
+
+    del tr_out.stats.mseed3
+    del tr_out.stats._format
+
+    assert tr == tr_out

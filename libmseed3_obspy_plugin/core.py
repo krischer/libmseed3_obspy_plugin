@@ -100,18 +100,21 @@ def _buffer_read_mseed3(
     # XXX: Once libmseed3 has left pre-release mode this should be written in C
     # for performance reasons.
 
-    # Callback function for mstl3_pack to actually write the file
     def _time_tolerance_py(record):
-        import pdb
-
-        pdb.set_trace()
-        print("hallo")
+        """
+        Must return a time tolerance in seconds.
+        """
+        sr = record.contents.samprate
+        # Return half a sample for now.
+        return (1.0 / sr) * 0.5
 
     def _samprate_tolerance_py(record):
-        import pdb
-
-        pdb.set_trace()
-        print("hallo")
+        """
+        Must return a sampling rate tolerance in Hertz.
+        """
+        sr = record.contents.samprate
+        # Return 0.1 percent of the sampling rate for now.
+        return 0.001 * sr
 
     _time_tolerance = C.CFUNCTYPE(C.c_double, C.POINTER(utils.MS3Record))(
         _time_tolerance_py
@@ -124,6 +127,7 @@ def _buffer_read_mseed3(
         time=_time_tolerance, samprate=_samprate_tolerance
     )
 
+    # Callback function for mstl3_pack to actually write the file
     utils._lib.mstl3_readbuffer(
         C.pointer(r),
         buffer,
