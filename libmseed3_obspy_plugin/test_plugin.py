@@ -617,3 +617,46 @@ def test_writing_and_reading_publication_versions():
         st.write(buf, format="mseed3")
         buf.seek(0, 0)
         assert _get_pub_ids(obspy.read(buf)) == [1, 1, 1]
+
+
+def test_max_record_length():
+    """
+    Also currently a weak test that will be better once we have some ability
+    to manually parse the record structure.
+    """
+    # This should fit into a single 4096 bytes record with STEIM2.
+    tr = obspy.Trace(data=np.arange(5000, dtype=np.int32))
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", max_record_length=4096)
+        size_1 = buf.tell()
+        buf.seek(0, 0)
+        tr1 = obspy.read(buf)[0]
+
+    # Much smaller records - should be a bigger file.
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", max_record_length=256)
+        size_2 = buf.tell()
+        buf.seek(0, 0)
+        tr2 = obspy.read(buf)[0]
+
+    # Very large record size should not be utilized in the end.
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", max_record_length=20000)
+        size_3 = buf.tell()
+        buf.seek(0, 0)
+        tr3 = obspy.read(buf)[0]
+
+    for t in [tr1, tr2, tr3]:
+        del t.stats.mseed3
+        del t.stats._format
+
+    assert tr == tr1
+    assert tr == tr2
+    assert tr == tr3
+
+    sizes = [size_1, size_2, size_3]
+
+    # This should be more or less stable. And it also makes sense. Smaller
+    # records result in more headers which bears some overhead.
+    assert sizes == [3121, 4033, 3121]
