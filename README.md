@@ -16,7 +16,7 @@ Install ObsPy, this plug-in only works with Python 3.6 and 3.7.
 ```bash
 $ git clone https://github.com/krischer/libmseed3_obspy_plugin.git
 $ cd libmseed3_obspy_plugin
-$ git submodule init && git submodule updatgit submodule init && git submodule updatee
+$ git submodule init && git submodule update
 
 # Make sure you have a C compiler.
 $ pip install -v -e .
