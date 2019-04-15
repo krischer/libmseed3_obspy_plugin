@@ -162,6 +162,13 @@ class MS3Record(C.Structure):
     ]
 
 
+class MS3Tolerance(C.Structure):
+    _fields_ = [
+        ("time", C.CFUNCTYPE(C.c_double, C.POINTER(MS3Record))),
+        ("samprate", C.CFUNCTYPE(C.c_double, C.POINTER(MS3Record))),
+    ]
+
+
 _lib.mstl3_init.argtypes = [C.c_void_p]
 _lib.mstl3_init.restype = C.POINTER(MS3TraceList)
 
@@ -192,14 +199,12 @@ _lib.mstl3_readbuffer.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.uint8, ndim=1, flags="C_CONTIGUOUS"),
     # buffer length
     C.c_ulonglong,
-    # time tolerance
-    C.c_double,
-    # Sample rate tolerance
-    C.c_double,
     # Split version
     C.c_int8,
     # flags,
     C.c_uint,
+    # Tolerance callbacks.
+    C.POINTER(MS3Tolerance),
     # verbose,
     C.c_int8,
 ]

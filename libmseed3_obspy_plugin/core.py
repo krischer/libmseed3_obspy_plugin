@@ -96,20 +96,48 @@ def _buffer_read_mseed3(
     if not headonly:
         flags |= utils._MSF_UNPACKDATA
 
+    # Set-up tolerance callbacks.
+    # XXX: Once libmseed3 has left pre-release mode this should be written in C
+    # for performance reasons.
+
+    # Callback function for mstl3_pack to actually write the file
+    def _time_tolerance_py(record):
+        import pdb
+
+        pdb.set_trace()
+        print("hallo")
+
+    def _samprate_tolerance_py(record):
+        import pdb
+
+        pdb.set_trace()
+        print("hallo")
+
+    _time_tolerance = C.CFUNCTYPE(C.c_double, C.POINTER(utils.MS3Record))(
+        _time_tolerance_py
+    )
+    _samprate_tolerance = C.CFUNCTYPE(C.c_double, C.POINTER(utils.MS3Record))(
+        _samprate_tolerance_py
+    )
+
+    tolerance_callbacks = utils.MS3Tolerance(
+        time=_time_tolerance, samprate=_samprate_tolerance
+    )
+
     utils._lib.mstl3_readbuffer(
         C.pointer(r),
         buffer,
         buffer.size,
-        # Default time and sample rate tolerance.
-        -1.0,
-        -1.0,
         # splitversion - always split!
         1,
         # flags
         flags,
+        # tolerance flags.
+        C.pointer(tolerance_callbacks),
         # verbose
         1 if verbose else 0,
     )
+
     st = _tracelist_to_stream(r)
     utils._lib.mstl3_free(C.pointer(r), 0)
     return st
