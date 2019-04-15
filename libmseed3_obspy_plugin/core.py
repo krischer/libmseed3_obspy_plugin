@@ -1,6 +1,7 @@
 import copy
 import ctypes as C  # NOQA
 import io
+import json
 import pathlib
 import typing
 
@@ -367,6 +368,9 @@ def _metadata_to_attrib_dict(md, collection=None):
     out.endtime = obspy.UTCDateTime(md.endtime / 1e9)
     out.flags = md.flags
 
+    if md.extra:
+        out.extra_data = obspy.core.AttribDict(json.loads(md.extra))
+
     collection.append(out)
 
     if md.next:
@@ -380,6 +384,7 @@ def _write_mseed3(
     max_record_length: int = 4096,
     publication_version: typing.Optional[int] = None,
     record_level_flags: typing.Optional[int] = None,
+    record_level_extra_data: typing.Optional[typing.Dict] = None,
     encoding: typing.Optional[typing.Union[utils.Encoding, str]] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
@@ -389,6 +394,9 @@ def _write_mseed3(
         Will overwrite any per-trace settings.
     :param record_level_flags: Record level flags for every record. Will
         overwrite any per-trace settings if given.
+    :param record_level_extra_data: Record level extra data that will be
+        stored as a compact JSON string with each record. Will overwrite any
+        per-trace settings.
     :param encoding: Data encoding. Must be compatible with the underlying
         dtype. If not given it will be chosen automatically. Int32 data will
         default to STEIM2 encoding.
@@ -409,6 +417,7 @@ def _write_mseed3(
         max_record_length=max_record_length,
         publication_version=publication_version,
         record_level_flags=record_level_flags,
+        record_level_extra_data=record_level_extra_data,
         verbose=verbose,
         encoding=encoding,
     )
@@ -421,6 +430,7 @@ def _buffer_write_mseed3(
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
     record_level_flags: typing.Optional[int] = None,
+    record_level_extra_data: typing.Optional[typing.Dict] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
     # Check all encodings - this is redundant but will raise an error if
@@ -440,6 +450,7 @@ def _buffer_write_mseed3(
             encoding=encoding,
             publication_version=publication_version,
             record_level_flags=record_level_flags,
+            record_level_extra_data=record_level_extra_data,
             verbose=verbose,
         )
 
@@ -451,6 +462,7 @@ def _buffer_write_mseed3_trace(
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
     record_level_flags: typing.Optional[int] = None,
+    record_level_extra_data: typing.Optional[typing.Dict] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
 
@@ -465,6 +477,7 @@ def _buffer_write_mseed3_trace(
         trace=trace,
         publication_version=publication_version,
         record_level_flags=record_level_flags,
+        record_level_extra_data=record_level_extra_data,
         record_length=max_record_length,
         encoding=encoding,
     )
@@ -508,6 +521,7 @@ def _trace_to_ms_record(
     encoding: utils.Encoding,
     publication_version: typing.Optional[int] = None,
     record_level_flags: typing.Optional[int] = None,
+    record_level_extra_data: typing.Optional[typing.Dict] = None,
 ):
     # Deal with the publication version. Code is a bit ugly but not much to be
     # done about it.
@@ -531,6 +545,32 @@ def _trace_to_ms_record(
     if record_level_flags:
         flags = record_level_flags
 
+    # And the record level extra data.
+    extra_data = None
+    # Get it from the stats.mseed3 dict.
+    if (
+        "mseed3" in trace.stats
+        and "record_level_extra_data" in trace.stats.mseed3
+    ):
+        extra_data = trace.stats.mseed3.record_level_extra_data
+    # If given, always use that.
+    if record_level_extra_data:
+        extra_data = record_level_extra_data
+
+    if extra_data:
+        # Generate the most compact JSON possible.
+        extra_data = json.dumps(
+            dict(extra_data), indent=None, separators=(",", ":")
+        ).encode()
+        # Give it a different name to not have it garbage collected before its
+        # time.
+        ed = np.frombuffer(extra_data, dtype=np.uint8)
+        extra_data_length = len(ed)
+        extra_data = ed.ctypes.data_as(C.POINTER(C.c_uint8))
+    else:
+        extra_data = None
+        extra_data_length = 0
+
     rec = utils.MS3Record(
         record=C.c_char_p(),
         reclen=record_length,
@@ -542,7 +582,6 @@ def _trace_to_ms_record(
             location=trace.stats.location,
             channel=trace.stats.channel,
         ).encode(),
-        # XXX: Is this used during writing?
         formatversion=3,
         # Record-level bit flags.
         flags=flags,
@@ -557,9 +596,9 @@ def _trace_to_ms_record(
         samplecnt=trace.stats.npts,
         # Should not matter during writing.
         crc=0,
-        extralength=0,
+        extralength=extra_data_length,
         datalength=0,
-        extra=C.c_char_p(),
+        extra=extra_data,
         datasamples=trace.data.ctypes.data_as(C.POINTER(C.c_uint8)),
         numsamples=trace.stats.npts,
         sampletype=utils.INV_SAMPLE_TYPES[trace.data.dtype],

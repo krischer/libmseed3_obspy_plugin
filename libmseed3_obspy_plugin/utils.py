@@ -171,7 +171,7 @@ class MS3Record(C.Structure):
         ("crc", C.c_uint),
         ("extralength", C.c_ushort),
         ("datalength", C.c_ushort),
-        ("extra", C.c_char_p),
+        ("extra", C.POINTER(C.c_uint8)),
         ("datasamples", C.POINTER(C.c_uint8)),
         ("numsamples", C.c_longlong),
         ("sampletype", C.c_char),
