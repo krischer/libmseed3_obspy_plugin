@@ -65,7 +65,7 @@ def _read_mseed3(
     headonly: bool = False,
     starttime: typing.Optional[obspy.UTCDateTime] = None,
     endtime: typing.Optional[obspy.UTCDateTime] = None,
-    verbose: bool = False,
+    verbose: typing.Union[bool, int] = False,
     **kwargs,
 ) -> obspy.Stream():
     # Don't even bother passing on the extra kwargs - this should really be
@@ -86,7 +86,7 @@ def _buffer_read_mseed3(
     headonly: bool = False,
     starttime: typing.Optional[obspy.UTCDateTime] = None,
     endtime: typing.Optional[obspy.UTCDateTime] = None,
-    verbose: bool = False,
+    verbose: typing.Union[bool, int] = False,
 ) -> obspy.Stream:
     r = utils._lib.mstl3_init(C.c_void_p())
 
@@ -139,7 +139,7 @@ def _buffer_read_mseed3(
         # tolerance flags.
         C.pointer(tolerance_callbacks),
         # verbose
-        1 if verbose else 0,
+        utils._verbosity_to_int(verbose),
     )
 
     st = _tracelist_to_stream(r)
@@ -213,7 +213,7 @@ def _write_mseed3(
     max_record_length: int = 4096,
     publication_version: typing.Optional[int] = None,
     encoding: typing.Optional[typing.Union[utils.Encoding, str]] = None,
-    verbose: bool = False,
+    verbose: typing.Union[bool, int] = False,
 ) -> None:
     # Map encoding string to enumerated value.
     if isinstance(encoding, str):
@@ -238,7 +238,7 @@ def _buffer_write_mseed3(
     max_record_length: int,
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
-    verbose: bool = False,
+    verbose: typing.Union[bool, int] = False,
 ) -> None:
     # Check all encodings - this is redundant but will raise an error if
     # encoding or dtypes are invalid/incompatible without having written
@@ -266,7 +266,7 @@ def _buffer_write_mseed3_trace(
     max_record_length: int,
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
-    verbose: bool = False,
+    verbose: typing.Union[bool, int] = False,
 ) -> None:
 
     encoding = utils._get_or_check_encoding(data=trace.data, encoding=encoding)
@@ -304,7 +304,7 @@ def _buffer_write_mseed3_trace(
         # flags. Always flush the data - seems to be what we want in ObsPy.
         utils._MSF_FLUSHDATA,
         # verbose,
-        1 if verbose else 0,
+        utils._verbosity_to_int(verbose),
     )
 
     # Assure all samples have been packed.

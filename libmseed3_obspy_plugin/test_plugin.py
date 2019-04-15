@@ -245,9 +245,9 @@ def test_read_write_roundtripping_different_dtypes_per_trace():
 def test_roundtripping_multi_record_file():
     tr = obspy.Trace(data=np.arange(10000, dtype=np.float64))
     with io.BytesIO() as buf:
-        tr.write(buf, format="mseed3", verbose=2)
+        tr.write(buf, format="mseed3")
         buf.seek(0, 0)
-        tr_out = obspy.read(buf, verbose=2)[0]
+        tr_out = obspy.read(buf)[0]
 
     del tr_out.stats.mseed3
     del tr_out.stats._format

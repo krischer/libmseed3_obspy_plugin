@@ -318,3 +318,12 @@ def _nslc_to_source_id(
     else:
         bsl = channel
     return f"XFDSN:{network}_{station}_{location}_{bsl}"
+
+
+def _verbosity_to_int(verbose: typing.Union[bool, int]) -> int:
+    if verbose is False:
+        return 0
+    elif verbose is True:
+        return 1
+    else:
+        return verbose
