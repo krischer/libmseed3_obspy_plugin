@@ -6,7 +6,7 @@ import numpy as np
 import obspy
 import pytest
 
-from libmseed3_obspy_plugin.core import _is_mseed3
+from libmseed3_obspy_plugin.core import _is_mseed3, _assemble_selections
 from libmseed3_obspy_plugin import utils
 
 data = pathlib.Path(__file__).parent / "src" / "libmseed" / "test"
@@ -303,3 +303,134 @@ def test_headonly():
 
     assert tr_out.stats.npts == 10
     np.testing.assert_equal(tr_out.data, np.array([]))
+
+
+def test_assemble_selections():
+    assert (
+        _assemble_selections(
+            starttime=None,
+            endtime=None,
+            sidpattern=None,
+            publication_versions=None,
+        )
+        is None
+    )
+
+    def _sel_to_dict(sel):
+        cur = {}
+        cur["sidpattern"] = sel.sidpattern.decode()
+
+        try:
+            tw = sel.timewindows.contents
+            time_windows = {"starttime": tw.starttime, "endtime": tw.endtime}
+        except ValueError:
+            time_windows = None
+        cur["timewindows"] = time_windows
+
+        cur["pubversion"] = sel.pubversion
+
+        try:
+            next_ = sel.next.contents
+        except ValueError:
+            pass
+        else:
+            cur["next"] = _sel_to_dict(next_)
+
+        return cur
+
+    assert _sel_to_dict(
+        _assemble_selections(
+            starttime=None,
+            endtime=None,
+            sidpattern="__*__",
+            publication_versions=None,
+        )
+    ) == {"sidpattern": "__*__", "timewindows": None, "pubversion": 0}
+
+    assert _sel_to_dict(
+        _assemble_selections(
+            starttime=None,
+            endtime=None,
+            sidpattern=None,
+            publication_versions=2,
+        )
+    ) == {"sidpattern": "*", "timewindows": None, "pubversion": 2}
+
+    assert _sel_to_dict(
+        _assemble_selections(
+            starttime=None,
+            endtime=None,
+            sidpattern=None,
+            publication_versions=[2],
+        )
+    ) == {"sidpattern": "*", "timewindows": None, "pubversion": 2}
+
+    assert _sel_to_dict(
+        _assemble_selections(
+            starttime=obspy.UTCDateTime(2012, 1, 1),
+            endtime=None,
+            sidpattern="HALLO",
+            publication_versions=[2],
+        )
+    ) == {
+        "sidpattern": "HALLO",
+        "timewindows": {
+            "starttime": 1325376000000000000,
+            "endtime": 9223372036854775807,
+        },
+        "pubversion": 2,
+    }
+
+    assert _sel_to_dict(
+        _assemble_selections(
+            starttime=None,
+            endtime=obspy.UTCDateTime(2012, 1, 1),
+            sidpattern="HALLO",
+            publication_versions=[2],
+        )
+    ) == {
+        "sidpattern": "HALLO",
+        "timewindows": {
+            "starttime": -9223372036854775808,
+            "endtime": 1325376000000000000,
+        },
+        "pubversion": 2,
+    }
+
+    assert _sel_to_dict(
+        _assemble_selections(
+            starttime=obspy.UTCDateTime(2011, 1, 1),
+            endtime=obspy.UTCDateTime(2012, 1, 1),
+            sidpattern="HALLO",
+            publication_versions=[2],
+        )
+    ) == {
+        "sidpattern": "HALLO",
+        "timewindows": {
+            "starttime": 1293840000000000000,
+            "endtime": 1325376000000000000,
+        },
+        "pubversion": 2,
+    }
+
+    assert _sel_to_dict(
+        _assemble_selections(
+            starttime=obspy.UTCDateTime(2011, 1, 1),
+            endtime=obspy.UTCDateTime(2012, 1, 1),
+            sidpattern="HALLO",
+            publication_versions=[2, 3, 5],
+        )
+    ) == {
+        "sidpattern": "HALLO",
+        "timewindows": {
+            "starttime": 1293840000000000000,
+            "endtime": 1325376000000000000,
+        },
+        "pubversion": 2,
+        "next": {
+            "sidpattern": "*",
+            "timewindows": None,
+            "pubversion": 3,
+            "next": {"sidpattern": "*", "timewindows": None, "pubversion": 5},
+        },
+    }

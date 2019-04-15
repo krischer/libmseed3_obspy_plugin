@@ -1,3 +1,4 @@
+import copy
 import ctypes as C  # NOQA
 import io
 import pathlib
@@ -65,9 +66,19 @@ def _read_mseed3(
     headonly: bool = False,
     starttime: typing.Optional[obspy.UTCDateTime] = None,
     endtime: typing.Optional[obspy.UTCDateTime] = None,
+    sidpattern: typing.Optional[str] = None,
     verbose: typing.Union[bool, int] = False,
     **kwargs,
 ) -> obspy.Stream():
+    """
+    :param headonly: Determines whether or not to unpack the data or just
+        read the headers.
+    :param starttime: Only read data samples after or at the start time.
+    :param endtime: Only read data samples before or at the end time.
+    :param sidpattern: Only keep records whose SID pattern match the given
+        pattern. Please note that the pattern must also includes the
+        namespaces, e.g. ``XFDSN`` and any potential agency.
+    """
     # Don't even bother passing on the extra kwargs - this should really be
     # cleaned up on ObsPy's side.
     return _buffer_proxy(
@@ -76,6 +87,7 @@ def _read_mseed3(
         reset_fp=False,
         headonly=headonly,
         starttime=starttime,
+        sidpattern=sidpattern,
         endtime=endtime,
         verbose=verbose,
     )
@@ -83,10 +95,11 @@ def _read_mseed3(
 
 def _buffer_read_mseed3(
     handle: io.RawIOBase,
-    headonly: bool = False,
-    starttime: typing.Optional[obspy.UTCDateTime] = None,
-    endtime: typing.Optional[obspy.UTCDateTime] = None,
-    verbose: typing.Union[bool, int] = False,
+    headonly: bool,
+    starttime: typing.Optional[obspy.UTCDateTime],
+    endtime: typing.Optional[obspy.UTCDateTime],
+    sidpattern: typing.Optional[str],
+    verbose: typing.Union[bool, int],
 ) -> obspy.Stream:
     r = utils._lib.mstl3_init(C.c_void_p())
 
@@ -147,6 +160,68 @@ def _buffer_read_mseed3(
     return st
 
 
+def _assemble_selections(
+    *,
+    starttime: typing.Optional[obspy.UTCDateTime],
+    endtime: typing.Optional[obspy.UTCDateTime],
+    sidpattern: typing.Optional[str],
+    publication_versions: typing.Optional[typing.Union[int, typing.List[int]]],
+) -> typing.Union[None, utils.MS3Selections]:
+    # No selection if nothing to be selected.
+    if (
+        starttime is None
+        and endtime is None
+        and sidpattern is None
+        and not publication_versions
+    ):
+        return None
+    else:
+        if isinstance(publication_versions, int):
+            publication_versions = [publication_versions]
+
+        selections = utils.MS3Selections()
+
+        # Deal with the times.
+        if starttime is not None or endtime is not None:
+            time_selection = utils.MS3SelectTime()
+            if starttime is not None:
+                if not isinstance(starttime, obspy.UTCDateTime):
+                    msg = "starttime needs to be a UTCDateTime object"
+                    raise TypeError(msg)
+                time_selection.starttime = starttime.ns
+            else:
+                time_selection.starttime = np.iinfo(np.int64).min
+            if endtime is not None:
+                if not isinstance(endtime, obspy.UTCDateTime):
+                    msg = "endtime needs to be a UTCDateTime object"
+                    raise TypeError(msg)
+                time_selection.endtime = endtime.ns
+            else:
+                time_selection.endtime = np.iinfo(np.int64).max
+            selections.timewindows.contents = time_selection
+
+        # Now the SID pattern.
+        if sidpattern is not None:
+            selections.sidpattern = sidpattern.encode()
+        else:
+            selections.sidpattern = b"*"
+
+        if publication_versions:
+            pub_ver = copy.deepcopy(publication_versions)
+            selections.pubversion = pub_ver.pop(0)
+            # We need a new selections struct for every publication version.
+            current_selection = selections
+            for p in pub_ver:
+                s = utils.MS3Selections(sidpattern=b"*", pubversion=p)
+                current_selection.next.contents = s
+                current_selection = s
+        else:
+            # All versions.
+            selections.pub_ver = 0
+
+        return selections
+
+
 def _tracelist_to_stream(t_l, headonly: bool):
     st = obspy.Stream()
 
@@ -161,7 +236,7 @@ def _tracelist_to_stream(t_l, headonly: bool):
                     s,
                     source_identifier=t.sid.decode(),
                     publication_version=t.pubversion,
-                    headonly=headonly
+                    headonly=headonly,
                 )
             )
             current_segment = current_segment.contents.next
@@ -170,8 +245,7 @@ def _tracelist_to_stream(t_l, headonly: bool):
 
 
 def _trace_segment_to_trace(
-    t_s, source_identifier: str, publication_version: int,
-    headonly: bool
+    t_s, source_identifier: str, publication_version: int, headonly: bool
 ) -> obspy.Trace:
     tr = obspy.Trace()
 

@@ -192,7 +192,30 @@ _lib.msr3_pack.argtypes = [
 _lib.msr3_pack.restype = C.c_int
 
 
-_lib.mstl3_readbuffer.argtypes = [
+class MS3SelectTime(C.Structure):
+    pass
+
+
+MS3SelectTime._fields_ = [
+    ("starttime", _nstime_t),
+    ("endtime", _nstime_t),
+    ("next", C.POINTER(MS3SelectTime)),
+]
+
+
+class MS3Selections(C.Structure):
+    pass
+
+
+MS3Selections._fields_ = [
+    ("sidpattern", C.c_char * 100),
+    ("timewindows", C.POINTER(MS3SelectTime)),
+    ("next", C.POINTER(MS3Selections)),
+    ("pubversion", C.c_uint8),
+]
+
+
+_lib.mstl3_readbuffer_selection.argtypes = [
     # Destination trace list.
     C.POINTER(C.POINTER(MS3TraceList)),
     # Data source.
@@ -205,10 +228,12 @@ _lib.mstl3_readbuffer.argtypes = [
     C.c_uint,
     # Tolerance callbacks.
     C.POINTER(MS3Tolerance),
+    # Selections.
+    C.POINTER(MS3Selections),
     # verbose,
     C.c_int8,
 ]
-_lib.mstl3_readbuffer.restype = C.c_longlong
+_lib.mstl3_readbuffer_selection.restype = C.c_longlong
 
 _lib.mstl3_pack.argtypes = [
     # Source trace list.
