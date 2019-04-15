@@ -169,6 +169,11 @@ def _buffer_read_mseed3(
         utils._verbosity_to_int(verbose),
     )
 
+    # Might be empty for example when the selections return nothing.
+    if r.contents.numtraces == 0:
+        msg = "No data in file with the given selection."
+        raise ValueError(msg)
+
     st = _tracelist_to_stream(r, headonly=headonly)
     utils._lib.mstl3_free(C.pointer(r), 0)
     return st
