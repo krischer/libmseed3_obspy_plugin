@@ -450,19 +450,22 @@ def test_reading_with_selections():
     tr1 = obspy.Trace(data=np.arange(10, dtype=np.int32))
     tr1.stats.starttime = obspy.UTCDateTime(2012, 2, 1)
     tr1.stats.station = "AA"
+    tr1.stats.mseed3 = obspy.core.AttribDict(publication_version=1)
 
     tr2 = obspy.Trace(data=np.arange(10, dtype=np.int32))
     tr2.stats.starttime = obspy.UTCDateTime(2013, 2, 1)
     tr2.stats.station = "BB"
+    tr2.stats.mseed3 = obspy.core.AttribDict(publication_version=2)
 
     tr3 = obspy.Trace(data=np.arange(10, dtype=np.int32))
     tr3.stats.starttime = obspy.UTCDateTime(2014, 2, 1)
     tr3.stats.station = "CC"
+    tr3.stats.mseed3 = obspy.core.AttribDict(publication_version=3)
 
     st = obspy.Stream(traces=[tr1, tr2, tr3])
 
     def _get_stations(stream):
-        return [tr.stats.station for tr in stream]
+        return sorted([tr.stats.station for tr in stream])
 
     buf = io.BytesIO()
     st.write(buf, format="mseed3")
@@ -488,20 +491,48 @@ def test_reading_with_selections():
             buf,
             starttime=obspy.UTCDateTime(2013, 1, 1),
             endtime=obspy.UTCDateTime(2014, 1, 1),
-            verbose=10,
         )
     ) == ["BB"]
 
     # SID pattern
     buf.seek(0, 0)
-    assert _get_stations(obspy.read(buf, sidpattern="*AA*", verbose=10)) == [
-        "AA"
+    assert _get_stations(obspy.read(buf, sidpattern="*AA*")) == ["AA"]
+    buf.seek(0, 0)
+    assert _get_stations(obspy.read(buf, sidpattern="*BB*")) == ["BB"]
+    buf.seek(0, 0)
+    assert _get_stations(obspy.read(buf, sidpattern="*CC*")) == ["CC"]
+
+    # Select by publication version.
+    buf.seek(0, 0)
+    assert _get_stations(obspy.read(buf, publication_versions=1)) == ["AA"]
+    buf.seek(0, 0)
+    assert _get_stations(obspy.read(buf, publication_versions=[2])) == ["BB"]
+    buf.seek(0, 0)
+    assert _get_stations(obspy.read(buf, publication_versions=3)) == ["CC"]
+    buf.seek(0, 0)
+    assert _get_stations(obspy.read(buf, publication_versions=[1, 2])) == [
+        "AA",
+        "BB",
     ]
     buf.seek(0, 0)
-    assert _get_stations(obspy.read(buf, sidpattern="*BB*", verbose=10)) == [
-        "BB"
+    assert _get_stations(obspy.read(buf, publication_versions=[1, 3])) == [
+        "AA",
+        "CC",
     ]
     buf.seek(0, 0)
-    assert _get_stations(obspy.read(buf, sidpattern="*CC*", verbose=10)) == [
-        "CC"
+    assert _get_stations(obspy.read(buf, publication_versions=[1, 2, 3])) == [
+        "AA",
+        "BB",
+        "CC",
     ]
+
+    # Test more than one thing.
+    buf.seek(0, 0)
+    assert _get_stations(
+        obspy.read(
+            buf,
+            sidpattern="XFDSN:*",
+            publication_versions=[1, 3],
+            starttime=obspy.UTCDateTime(2014, 1, 1),
+        )
+    ) == ["CC"]

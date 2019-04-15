@@ -15,6 +15,7 @@ _f_types = (typing.Union[io.RawIOBase, str, pathlib.Path],)
 def _buffer_proxy(
     filename_or_buf: _f_types,
     function: typing.Callable,
+    file_mode: str,
     reset_fp: bool = True,
     *args: typing.Any,
     **kwargs: typing.Any,
@@ -27,13 +28,15 @@ def _buffer_proxy(
     :param filename_or_buf: File to pass.
     :type filename_or_buf: str, open file, or file-like object.
     :param function: The function to call.
+    :param file_mode: The mode in which to open the file if it has to be
+        opened.
     :param reset_fp: If True, the file pointer will be set to the initial
         position after the function has been called.
     :type reset_fp: bool
     """
     # String or pathlib.Path => Open file
     if isinstance(filename_or_buf, (str, pathlib.Path)):
-        with open(filename_or_buf, "rb") as fh:
+        with open(filename_or_buf, file_mode) as fh:
             return function(fh, *args, **kwargs)
 
     # Otherwise it must have a tell method.
@@ -53,7 +56,10 @@ def _buffer_proxy(
 
 def _is_mseed3(filename: _f_types) -> bool:
     return _buffer_proxy(
-        filename_or_buf=filename, function=_buffer_is_mseed3, reset_fp=True
+        filename_or_buf=filename,
+        function=_buffer_is_mseed3,
+        file_mode="rb",
+        reset_fp=True,
     )
 
 
@@ -89,6 +95,7 @@ def _read_mseed3(
     return _buffer_proxy(
         filename_or_buf=filename,
         function=_buffer_read_mseed3,
+        file_mode="rb",
         reset_fp=False,
         headonly=headonly,
         starttime=starttime,
@@ -339,6 +346,7 @@ def _write_mseed3(
     return _buffer_proxy(
         filename_or_buf=filename,
         function=_buffer_write_mseed3,
+        file_mode="wb",
         stream=stream,
         max_record_length=max_record_length,
         publication_version=publication_version,
