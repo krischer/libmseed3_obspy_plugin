@@ -16,7 +16,7 @@ def _buffer_proxy(
     filename_or_buf: _f_types,
     function: typing.Callable,
     file_mode: str,
-    reset_fp: bool = True,
+    reset_fp: bool,
     *args: typing.Any,
     **kwargs: typing.Any,
 ):
@@ -342,7 +342,9 @@ def _write_mseed3(
     :param max_record_length: Maximum record length.
     :param publication_version: Publication version for all traces if given.
         Will overwrite any per-trace settings.
-    :param encoding: Data encoding.
+    :param encoding: Data encoding. Must be compatible with the underlying
+        dtype. If not given it will be chosen automatically. Int32 data will
+        default to STEIM2 encoding.
     :param verbose: Controls verbosity - passed to `libmseed`.
     """
     # Map encoding string to enumerated value.
@@ -355,6 +357,7 @@ def _write_mseed3(
         filename_or_buf=filename,
         function=_buffer_write_mseed3,
         file_mode="wb",
+        reset_fp=False,
         stream=stream,
         max_record_length=max_record_length,
         publication_version=publication_version,

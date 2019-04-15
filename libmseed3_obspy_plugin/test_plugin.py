@@ -536,3 +536,45 @@ def test_reading_with_selections():
             starttime=obspy.UTCDateTime(2014, 1, 1),
         )
     ) == ["CC"]
+
+
+def test_setting_encoding():
+    """
+    Weak test to set the encoding.
+
+    Can be stronger once we have some utility to manually parse the record
+    structure.
+    """
+    tr = obspy.Trace(data=np.arange(200, dtype=np.int32))
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", encoding=utils.Encoding.INT32)
+        size_1 = buf.tell()
+        buf.seek(0, 0)
+        tr1 = obspy.read(buf)[0]
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", encoding=utils.Encoding.STEIM1)
+        size_2 = buf.tell()
+        buf.seek(0, 0)
+        tr2 = obspy.read(buf)[0]
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", encoding=utils.Encoding.STEIM2)
+        size_3 = buf.tell()
+        buf.seek(0, 0)
+        tr3 = obspy.read(buf)[0]
+
+    for t in [tr1, tr2, tr3]:
+        del t.stats.mseed3
+        del t.stats._format
+
+    assert tr == tr1
+    assert tr == tr2
+    assert tr == tr3
+
+    sizes = [size_1, size_2, size_3]
+
+    # This should be stable and also makes logical sense in that STEIM2
+    # compressed better than STEIM1.
+    assert sizes == [849, 305, 241]
