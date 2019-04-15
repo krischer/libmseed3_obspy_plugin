@@ -235,40 +235,6 @@ _lib.mstl3_readbuffer_selection.argtypes = [
 ]
 _lib.mstl3_readbuffer_selection.restype = C.c_longlong
 
-_lib.mstl3_pack.argtypes = [
-    # Source trace list.
-    C.POINTER(MS3TraceList),
-    # Callback function to do the actual writing.
-    C.CFUNCTYPE(None, C.POINTER(C.c_char), C.c_int, C.c_void_p),
-    # Pointer passed to the callback function.
-    C.c_void_p,
-    # Maximum record length.
-    C.c_int,
-    # Encoding.
-    C.c_int8,
-    # The number of packed samples - returned to the caller.
-    C.POINTER(C.c_longlong),
-    # flags.
-    C.c_uint,
-    # verbose,
-    C.c_int8,
-    # Pointer to a packed JSON string.
-    C.c_char_p,
-]
-# Returns the number of created records.
-_lib.mstl3_pack.restype = C.c_int
-
-
-class LibmseedMemory(C.Structure):
-    _fields_ = [
-        ("malloc", C.CFUNCTYPE(C.c_void_p, C.c_size_t)),
-        ("realloc", C.CFUNCTYPE(C.c_void_p, C.c_void_p, C.c_size_t)),
-        ("free", C.CFUNCTYPE(None, C.c_void_p)),
-    ]
-
-
-_libmseed_memory = C.cast(_lib.libmseed_memory, C.POINTER(LibmseedMemory))
-
 
 _SID_REGEX = re.compile(
     r"""

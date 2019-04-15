@@ -485,7 +485,7 @@ def _trace_to_ms_record(
         # Record-level bit flags.
         flags=0,
         starttime=trace.stats.starttime.ns,
-        # XXX: Documented as "Nominal sample rate as samples/second (Hz) or
+        # xxx: documented as "nominal sample rate as samples/second (hz) or
         # period (s)"
         #
         # This is not the same. I guess its the sampling rate in Hz?
