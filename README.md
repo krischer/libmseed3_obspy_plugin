@@ -7,7 +7,14 @@ plug-in cause I had to choose a name) format.
 Will likely migrate to core ObsPy once the format, definition, and library
 has stabilized.
 
-**STATUS:** Beta
+**STATUS:** Alpha
+
+---
+
+**DON'T USE IN PRODUCTION - NEITHER THE FORMAT NOR THE LIBRARY ARE FINALIZED!!!**
+
+---
+
 
 ## Installation
 
@@ -30,7 +37,6 @@ $ py.test
 * Hook into `ms_log()` so that diagnostic messages, warnings and exceptions are
   raised from Python and thus can caught and handled. Similar to what ObsPy is
   currently doing for `libmseed` 2.
-* No way to read/write any of the extra header fields yet.
 * More flexible way to set the sample rate and timing tolerances.
 
 ## Usage
@@ -95,4 +101,66 @@ from libmseed3_obspy_plugin import utils
 
 st.write("out.ms3", format="mseed3", encoding=utils.Encoding.STEIM1,
          publication_version=2)
+```
+
+
+### Record Level Flags
+
+Record level flags are dealt with using the `utils.RecordFlag` object:
+
+```python
+from libmseed3_obspy_plugins.utils import RecordFlag
+
+f = RecordFlag.calibration_signal_present | RecordFlag.clock_locked
+
+# You can set them as part of a Trace's stats attribute.
+st[0].stats.mseed3.record_level_flags = f
+
+# Or globally - they will overwrite the per-trace settings.
+st.write("out.ms3", format="mseed3", record_level_flags=f)
+```
+
+By default they will not be read, passing the `parse_record_level_metadata` to the `read()` function will add them to the trace metadata. It will add one entry per record, thus potentially a lot.
+
+```python
+>>> tr = obspy.read("file.ms3", parse_record_level_metadata=True)[0]
+>>> tr.stats.mseed3.record_level_metadata
+[AttribDict({
+    'starttime': UTCDateTime(2009, 8, 24, 0, 20, 3),
+    'endtime': UTCDateTime(2009, 8, 24, 0, 20, 8, 30000),
+    'flags': <RecordFlag.clock_locked|calibration_signal_present: 5>}),
+ AttribDict({
+     'starttime': UTCDateTime(2009, 8, 24, 0, 20, 8, 40000),
+     'endtime': UTCDateTime(2009, 8, 24, 0, 20, 13, 70000),
+     'flags': <RecordFlag.clock_locked|calibration_signal_present: 5>})]
+```
+
+### Record Level JSON Metadata
+
+An arbitrary JSON document can be stored per record. This plug-in tranparently maps dictionaries to the JSON data.
+
+```python
+# You can set them as part of a Trace's stats attribute.
+st[0].stats.mseed3.record_level_extra_data = {"some_extra_data": 1.2}
+
+# Or globally - they will overwrite the per-trace settings.
+st.write("out.ms3", format="mseed3",
+         record_level_extra_data={"a": True, "b": [1, 2, 3]})
+```
+
+Parsing them again requires the `parse_record_level_metadata` keyword argument to be set. And, as with the flags, this is potentially expensive and might result in a lot of meta data.
+
+```python
+>>> tr = obspy.read("file.ms3", parse_record_level_metadata=True)[0]
+>>> tr.stats.mseed3.record_level_metadata
+[AttribDict({
+    'starttime': UTCDateTime(2009, 8, 24, 0, 20, 3),
+    'endtime': UTCDateTime(2009, 8, 24, 0, 20, 8),
+    'flags': <RecordFlag.0: 0>,
+    'extra_data': AttribDict({'a': True, 'b': [1, 2, 3]})}),
+ AttribDict({
+     'starttime': UTCDateTime(2009, 8, 24, 0, 20, 8, 10000),
+     'endtime': UTCDateTime(2009, 8, 24, 0, 20, 13, 10000),
+     'flags': <RecordFlag.0: 0>,
+     'extra_data': AttribDict({'a': True, 'b': [1, 2, 3]})}),
 ```
