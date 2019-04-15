@@ -253,3 +253,42 @@ def test_roundtripping_multi_record_file():
     del tr_out.stats._format
 
     assert tr == tr_out
+
+
+def test_verbosity_flag_reading(capfd):
+    """
+    Check if it correctly passed on.
+    """
+    tr = obspy.Trace(data=np.arange(10, dtype=np.int32))
+
+    # No output with no flag.
+    with io.BytesIO() as buf:
+        capfd.readouterr()
+        tr.write(buf, format="mseed3")
+    c = capfd.readouterr()
+    assert c.out == ""
+    assert c.err == ""
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3", verbose=2)
+    c = capfd.readouterr()
+    assert c.out == ""
+    assert len(c.err) > 20
+
+    # Check the same for reading.
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        capfd.readouterr()
+        obspy.read(buf)
+    c = capfd.readouterr()
+    assert c.out == ""
+    assert c.err == ""
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        obspy.read(buf, verbose=2)
+    c = capfd.readouterr()
+    assert c.out == ""
+    assert len(c.err) > 20
