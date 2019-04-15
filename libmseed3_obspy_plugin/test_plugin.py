@@ -665,15 +665,21 @@ def test_max_record_length():
 def test_record_level_flags():
     tr1 = obspy.Trace(data=np.arange(10, dtype=np.int32))
     tr1.stats.station = "AA"
-    tr1.stats.mseed3 = obspy.core.AttribDict(record_level_flags=1)
+    tr1.stats.mseed3 = obspy.core.AttribDict(
+        record_level_flags=utils.RecordFlag.calibration_signal_present
+    )
 
     tr2 = obspy.Trace(data=np.arange(10, dtype=np.int32))
     tr2.stats.station = "BB"
-    tr2.stats.mseed3 = obspy.core.AttribDict(record_level_flags=2)
+    tr2.stats.mseed3 = obspy.core.AttribDict(
+        record_level_flags=utils.RecordFlag.time_tag_is_questionable
+    )
 
     tr3 = obspy.Trace(data=np.arange(10, dtype=np.int32))
     tr3.stats.station = "CC"
-    tr3.stats.mseed3 = obspy.core.AttribDict(record_level_flags=3)
+    tr3.stats.mseed3 = obspy.core.AttribDict(
+        record_level_flags=utils.RecordFlag.clock_locked
+    )
 
     st = obspy.Stream(traces=[tr1, tr2, tr3])
 
@@ -688,7 +694,11 @@ def test_record_level_flags():
         buf.seek(0, 0)
         assert _get_record_level_flags(
             obspy.read(buf, parse_record_level_metadata=True)
-        ) == [1, 2, 3]
+        ) == [
+            utils.RecordFlag.calibration_signal_present,
+            utils.RecordFlag.time_tag_is_questionable,
+            utils.RecordFlag.clock_locked,
+        ]
 
         # If parse_metadata is not given or False, the meta data fill not be
         # read.
@@ -702,22 +712,29 @@ def test_record_level_flags():
         assert "record_level_metadata" in tr_out.stats.mseed3.keys()
 
     # Can be overwritten.
+    f = (
+        utils.RecordFlag.calibration_signal_present
+        | utils.RecordFlag.clock_locked
+    )
+    assert f.value == 5
+
     with io.BytesIO() as buf:
-        st.write(buf, format="mseed3", record_level_flags=5)
+        st.write(buf, format="mseed3", record_level_flags=f)
         buf.seek(0, 0)
         assert _get_record_level_flags(
             obspy.read(buf, parse_record_level_metadata=True)
-        ) == [5, 5, 5]
+        ) == [f, f, f]
 
     # If not set, they default to 0.
     for tr in st:
         del tr.stats.mseed3
+    f = utils.RecordFlag(0)
     with io.BytesIO() as buf:
         st.write(buf, format="mseed3")
         buf.seek(0, 0)
         assert _get_record_level_flags(
             obspy.read(buf, parse_record_level_metadata=True)
-        ) == [0, 0, 0]
+        ) == [f, f, f]
 
 
 def test_record_level_metadata():
@@ -726,7 +743,8 @@ def test_record_level_metadata():
         tr1.write(
             buf,
             format="mseed3",
-            record_level_flags=5,
+            record_level_flags=utils.RecordFlag.calibration_signal_present
+            | utils.RecordFlag.clock_locked,
             record_level_extra_data={"something": 1, "or": 2},
         )
         buf.seek(0, 0)
@@ -737,7 +755,8 @@ def test_record_level_metadata():
             {
                 "starttime": obspy.UTCDateTime(1970, 1, 1, 0, 0),
                 "endtime": obspy.UTCDateTime(1970, 1, 1, 1, 48, 15),
-                "flags": 5,
+                "flags": utils.RecordFlag.calibration_signal_present
+                | utils.RecordFlag.clock_locked,
                 "extra_data": {"something": 1, "or": 2},
             }
         ),
@@ -745,7 +764,8 @@ def test_record_level_metadata():
             {
                 "starttime": obspy.UTCDateTime(1970, 1, 1, 1, 48, 16),
                 "endtime": obspy.UTCDateTime(1970, 1, 1, 2, 46, 39),
-                "flags": 5,
+                "flags": utils.RecordFlag.calibration_signal_present
+                | utils.RecordFlag.clock_locked,
                 "extra_data": {"something": 1, "or": 2},
             }
         ),

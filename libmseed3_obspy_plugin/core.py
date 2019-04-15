@@ -366,7 +366,7 @@ def _metadata_to_attrib_dict(md, collection=None):
     out = obspy.core.AttribDict()
     out.starttime = obspy.UTCDateTime(md.starttime / 1e9)
     out.endtime = obspy.UTCDateTime(md.endtime / 1e9)
-    out.flags = md.flags
+    out.flags = utils.RecordFlag(md.flags)
 
     if md.extra:
         out.extra_data = obspy.core.AttribDict(json.loads(md.extra))
@@ -383,7 +383,7 @@ def _write_mseed3(
     filename: _f_types,
     max_record_length: int = 4096,
     publication_version: typing.Optional[int] = None,
-    record_level_flags: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[utils.RecordFlag] = None,
     record_level_extra_data: typing.Optional[typing.Dict] = None,
     encoding: typing.Optional[typing.Union[utils.Encoding, str]] = None,
     verbose: typing.Union[bool, int] = False,
@@ -429,7 +429,7 @@ def _buffer_write_mseed3(
     max_record_length: int,
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
-    record_level_flags: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[utils.RecordFlag] = None,
     record_level_extra_data: typing.Optional[typing.Dict] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
@@ -461,7 +461,7 @@ def _buffer_write_mseed3_trace(
     max_record_length: int,
     encoding: typing.Optional[utils.Encoding] = None,
     publication_version: typing.Optional[int] = None,
-    record_level_flags: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[utils.RecordFlag] = None,
     record_level_extra_data: typing.Optional[typing.Dict] = None,
     verbose: typing.Union[bool, int] = False,
 ) -> None:
@@ -520,7 +520,7 @@ def _trace_to_ms_record(
     record_length: int,
     encoding: utils.Encoding,
     publication_version: typing.Optional[int] = None,
-    record_level_flags: typing.Optional[int] = None,
+    record_level_flags: typing.Optional[utils.RecordFlag] = None,
     record_level_extra_data: typing.Optional[typing.Dict] = None,
 ):
     # Deal with the publication version. Code is a bit ugly but not much to be
@@ -571,6 +571,9 @@ def _trace_to_ms_record(
         extra_data = None
         extra_data_length = 0
         _extra_data_array = None
+
+    if flags:
+        flags = flags.value
 
     rec = utils.MS3Record(
         record=C.c_char_p(),

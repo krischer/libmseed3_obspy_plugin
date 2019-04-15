@@ -20,6 +20,12 @@ _lib_file = _lib_files[0]
 _lib = C.CDLL(_lib_file)
 
 
+class RecordFlag(enum.Flag):
+    calibration_signal_present = 1
+    time_tag_is_questionable = 2
+    clock_locked = 4
+
+
 # Some #defines. No way to get them from the shared library.
 _LM_SIDLEN = 64
 _MSF_UNPACKDATA = 0x0001
