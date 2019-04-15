@@ -67,6 +67,9 @@ def _read_mseed3(
     starttime: typing.Optional[obspy.UTCDateTime] = None,
     endtime: typing.Optional[obspy.UTCDateTime] = None,
     sidpattern: typing.Optional[str] = None,
+    publication_versions: typing.Optional[
+        typing.Union[int, typing.List[int]]
+    ] = None,
     verbose: typing.Union[bool, int] = False,
     **kwargs,
 ) -> obspy.Stream():
@@ -78,6 +81,8 @@ def _read_mseed3(
     :param sidpattern: Only keep records whose SID pattern match the given
         pattern. Please note that the pattern must also includes the
         namespaces, e.g. ``XFDSN`` and any potential agency.
+    :param publication_versions: A list of publication versions to retain. If
+        not given, all publication versions will be read.
     """
     # Don't even bother passing on the extra kwargs - this should really be
     # cleaned up on ObsPy's side.
@@ -88,6 +93,7 @@ def _read_mseed3(
         headonly=headonly,
         starttime=starttime,
         sidpattern=sidpattern,
+        publication_versions=publication_versions,
         endtime=endtime,
         verbose=verbose,
     )
@@ -99,6 +105,7 @@ def _buffer_read_mseed3(
     starttime: typing.Optional[obspy.UTCDateTime],
     endtime: typing.Optional[obspy.UTCDateTime],
     sidpattern: typing.Optional[str],
+    publication_versions: typing.Optional[typing.Union[int, typing.List[int]]],
     verbose: typing.Union[bool, int],
 ) -> obspy.Stream:
     r = utils._lib.mstl3_init(C.c_void_p())
@@ -141,7 +148,7 @@ def _buffer_read_mseed3(
     )
 
     # Callback function for mstl3_pack to actually write the file
-    utils._lib.mstl3_readbuffer(
+    utils._lib.mstl3_readbuffer_selection(
         C.pointer(r),
         buffer,
         buffer.size,
@@ -151,6 +158,13 @@ def _buffer_read_mseed3(
         flags,
         # tolerance flags.
         C.pointer(tolerance_callbacks),
+        # selections.
+        _assemble_selections(
+            starttime=starttime,
+            endtime=endtime,
+            publication_versions=publication_versions,
+            sidpattern=sidpattern,
+        ),
         # verbose
         utils._verbosity_to_int(verbose),
     )
