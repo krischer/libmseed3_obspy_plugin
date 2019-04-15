@@ -93,6 +93,19 @@ SAMPLE_TYPES = {
 INV_SAMPLE_TYPES = {value: key for key, value in SAMPLE_TYPES.items()}
 
 
+class MS3Metadata(C.Structure):
+    pass
+
+
+MS3Metadata._fields_ = [
+    ("starttime", _nstime_t),
+    ("endtime", _nstime_t),
+    ("flags", C.c_uint8),
+    ("extra", C.c_char_p),
+    ("next", C.POINTER(MS3Metadata)),
+]
+
+
 class MS3TraceSeg(C.Structure):
     pass
 
@@ -106,6 +119,7 @@ MS3TraceSeg._fields_ = [
     ("numsamples", C.c_longlong),
     ("sampletype", C.c_char),
     ("prvtptr", C.c_void_p),
+    ("metadata", C.POINTER(MS3Metadata)),
     ("prev", C.POINTER(MS3TraceSeg)),
     ("next", C.POINTER(MS3TraceSeg)),
 ]
