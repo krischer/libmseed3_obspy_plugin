@@ -249,11 +249,22 @@ _SID_REGEX = re.compile(
     _
     (?P<loc>[A-Z]*)       # Location code
     _
-    (?P<band>[A-Z]*)      # Channel badn
-    _
-    (?P<source>[A-Z]*)    # Channel source
-    _
-    (?P<position>[A-Z]*)  # Channel position
+    # Now either allow for separate band, source, position codes or a single
+    # all encompassing one.
+    (
+        (
+            (?P<band>[A-Z]*)      # Channel band
+            _
+            (?P<source>[A-Z]*)    # Channel source
+            _
+            (?P<position>[A-Z]*)  # Channel position
+        )
+        |
+        (
+            (?P<bsp>[A-Z]*)  # BSP
+        )
+    )
+
     """,
     re.X,
 )
@@ -273,11 +284,18 @@ def _source_id_to_nslc(sid: str) -> typing.Tuple[str, str, str, str]:
             "expected pattern."
         )
 
+    b, s, p = m.group("band"), m.group("source"), m.group("position")
+
+    if any((b, s, p)):
+        bsp = b + s + p
+    else:
+        bsp = m.group("bsp")
+
     return (
-        m.group("net"),
-        m.group("sta"),
-        m.group("loc"),
-        m.group("band") + m.group("source") + m.group("position"),
+        m.group("net") or "",
+        m.group("sta") or "",
+        m.group("loc") or "",
+        bsp or "",
     )
 
 

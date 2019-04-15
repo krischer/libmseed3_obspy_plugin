@@ -18,6 +18,10 @@ data = pathlib.Path(__file__).parent / "src" / "libmseed" / "test"
         ("XFDSN:NET_STA_LOC_B_S_P", "NET", "STA", "LOC", "BSP"),
         ("XFDSN:AGENCY:NET_STA_LOC_B_S_P", "NET", "STA", "LOC", "BSP"),
         ("XFDSN:XX_TEST__L_H_Z", "XX", "TEST", "", "LHZ"),
+        ("XFDSN:___", "", "", "", ""),
+        ("XFDSN:_AA__", "", "AA", "", ""),
+        ("XFDSN:_AA__Z", "", "AA", "", "Z"),
+        ("XFDSN:_AA__B_H_Z", "", "AA", "", "BHZ"),
     ],
 )
 def test_source_id_to_nslc(sid, net, sta, loc, chan):
@@ -30,6 +34,10 @@ def test_source_id_to_nslc(sid, net, sta, loc, chan):
         ("NET", "STA", "LOC", "BSP", "XFDSN:NET_STA_LOC_B_S_P"),
         ("XX", "TEST", "", "LHZ", "XFDSN:XX_TEST__L_H_Z"),
         ("XX", "TEST", "", "RANDOM", "XFDSN:XX_TEST__RANDOM"),
+        ("", "", "", "", "XFDSN:___"),
+        ("", "AA", "", "", "XFDSN:_AA__"),
+        ("", "AA", "", "Z", "XFDSN:_AA__Z"),
+        ("", "AA", "", "BHZ", "XFDSN:_AA__B_H_Z"),
     ],
 )
 def test_nslc_to_source_id(net, sta, loc, chan, sid):
@@ -199,3 +207,27 @@ def test_write_read_roundtripping(dtype, encoding):
     assert tr_new.stats.sampling_rate == 22.0
     assert tr_new.stats.mseed3.source_identifier == "XFDSN:AA_BB_CC_B_H_Z"
     np.testing.assert_equal(tr.data, tr_new.data)
+
+
+def test_read_write_roundtripping_different_dtypes_per_trace():
+    tr1 = obspy.Trace(
+        data=np.arange(100, dtype=np.float32),
+        header={"station": "AA", "sampling_rate": 11.2},
+    )
+    tr2 = obspy.Trace(
+        data=np.arange(100, dtype=np.float64),
+        header={"station": "BB", "sampling_rate": 22.2},
+    )
+    tr3 = obspy.Trace(
+        data=np.arange(200, dtype=np.int32),
+        header={"station": "CC", "sampling_rate": 0.03},
+    )
+
+    st = obspy.Stream(traces=[tr1, tr2, tr3])
+
+    with io.BytesIO() as buf:
+        st.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        st2 = obspy.read(buf)
+
+    assert st == st2
