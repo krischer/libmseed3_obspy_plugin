@@ -168,8 +168,10 @@ def _buffer_read_mseed3(
         C.pointer(r),
         buffer,
         buffer.size,
-        # splitversion - always split!
-        1,
+        # splitversion - no reason to ever split for the Python wrappers I
+        # believe. See https://github.com/iris-edu/libmseed/issues/44 for
+        # some reasoning.
+        0,
         # flags
         flags,
         # tolerance flags.
