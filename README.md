@@ -162,5 +162,5 @@ Parsing them again requires the `parse_record_level_metadata` keyword argument t
      'starttime': UTCDateTime(2009, 8, 24, 0, 20, 8, 10000),
      'endtime': UTCDateTime(2009, 8, 24, 0, 20, 13, 10000),
      'flags': <RecordFlag.0: 0>,
-     'extra_data': AttribDict({'a': True, 'b': [1, 2, 3]})}),
+     'extra_data': AttribDict({'a': True, 'b': [1, 2, 3]})})]
 ```
