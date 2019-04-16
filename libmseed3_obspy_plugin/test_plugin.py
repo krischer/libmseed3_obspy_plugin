@@ -465,7 +465,7 @@ def test_reading_with_selections():
     st = obspy.Stream(traces=[tr1, tr2, tr3])
 
     def _get_stations(stream):
-        return sorted([tr.stats.station for tr in stream])
+        return [tr.stats.station for tr in stream]
 
     buf = io.BytesIO()
     st.write(buf, format="mseed3")
