@@ -575,6 +575,11 @@ def _trace_to_ms_record(
     if flags:
         flags = flags.value
 
+    samprate = trace.stats.sampling_rate
+    # Negative sampling rates are sample intervals.
+    if samprate < 1.0:
+        samprate = -1.0 * trace.stats.delta
+
     rec = utils.MS3Record(
         record=C.c_char_p(),
         reclen=record_length,

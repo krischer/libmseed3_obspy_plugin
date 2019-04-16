@@ -835,3 +835,24 @@ def test_record_level_json():
             "extra_data"
             not in tr_out.stats.mseed3.record_level_metadata[0].keys()
         )
+
+
+@pytest.mark.parametrize(
+    "sampling_rate",
+    [1e-8, 1e-6, 1e-4, 1e-2, 1.0, 1e2, 1e4, 1e6, 1e8, 22.345, 0.0234],
+)
+def test_roundtripping_various_sampling_rates(sampling_rate):
+    tr = obspy.Trace(
+        data=np.arange(10, dtype=np.int32),
+        header={"station": "AA", "sampling_rate": sampling_rate},
+    )
+
+    with io.BytesIO() as buf:
+        tr.write(buf, format="mseed3")
+        buf.seek(0, 0)
+        tr_out = obspy.read(buf)[0]
+
+    del tr_out.stats.mseed3
+    del tr_out.stats._format
+
+    assert tr == tr_out
