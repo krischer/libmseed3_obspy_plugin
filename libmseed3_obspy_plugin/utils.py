@@ -37,6 +37,10 @@ _MSF_ATENDOFFILE = 0x0020
 _MSF_STOREMETADATA = 0x0040
 _MSF_MAINTAINMSTL = 0x0080
 
+# Error code for routines that normally return a high precision time.
+# The time value corresponds to '1902-1-1 00:00:00.00000000'.
+_NSTERROR = -2145916800000000000
+
 # Also some typedefs
 _nstime_t = C.c_longlong
 

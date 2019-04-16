@@ -223,20 +223,20 @@ def _assemble_selections(
         # Deal with the times.
         if starttime is not None or endtime is not None:
             time_selection = utils.MS3SelectTime()
+            time_selection.starttime = utils._NSTERROR
+            time_selection.endtime = utils._NSTERROR
+
             if starttime is not None:
                 if not isinstance(starttime, obspy.UTCDateTime):
                     msg = "starttime needs to be a UTCDateTime object"
                     raise TypeError(msg)
                 time_selection.starttime = starttime.ns
-            else:
-                time_selection.starttime = np.iinfo(np.int64).min
             if endtime is not None:
                 if not isinstance(endtime, obspy.UTCDateTime):
                     msg = "endtime needs to be a UTCDateTime object"
                     raise TypeError(msg)
                 time_selection.endtime = endtime.ns
-            else:
-                time_selection.endtime = np.iinfo(np.int64).max
+
             selections.timewindows.contents = time_selection
 
         # Now the SID pattern.

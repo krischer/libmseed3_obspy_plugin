@@ -376,7 +376,7 @@ def test_assemble_selections():
         "sidpattern": "HALLO",
         "timewindows": {
             "starttime": 1325376000000000000,
-            "endtime": 9223372036854775807,
+            "endtime": utils._NSTERROR,
         },
         "pubversion": 2,
     }
@@ -391,7 +391,7 @@ def test_assemble_selections():
     ) == {
         "sidpattern": "HALLO",
         "timewindows": {
-            "starttime": -9223372036854775808,
+            "starttime": utils._NSTERROR,
             "endtime": 1325376000000000000,
         },
         "pubversion": 2,
